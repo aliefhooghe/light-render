@@ -10,12 +10,21 @@ namespace Xrender {
 
     material make_source_material(float temperature)
     {
-        return lambertian_material{};
+        return source_material{{1.f, 1.f, 1.f}};
     }
 
     material make_lambertian_material(const vecf absorption)
     {
-        return source_material{};
+        return lambertian_material{absorption};
     }
+
+    vecf material_preview_color(const material& mtl)
+    {
+        if (is_source(mtl))
+            return {1.f, 0.f, 1.f};
+        else
+            return std::get<lambertian_material>(mtl).absorption;
+    }
+
 } /* namespace Xrender */
 
