@@ -7,9 +7,9 @@ namespace Xrender {
 
         thread_local static std::mt19937 __rand_generator__(std::random_device{}());
 
-        float uniform(float min = 0.0f, float max = 1.0f) noexcept
+        float uniform(float min, float max) noexcept
         {
-            std::uniform_real_distribution<float> distribution{0.0f, 1.0f};
+            std::uniform_real_distribution<float> distribution{min, max};
             return distribution(__rand_generator__);
         }
 

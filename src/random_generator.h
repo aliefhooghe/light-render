@@ -9,14 +9,9 @@ namespace Xrender {
     namespace rand {
 
         /**
-         * \brief sample a float uniformly in the interval [0.0, 1.0]
-         */
-        float uniform() noexcept;
-
-        /**
          * \brief sample a float uniformly in the interval [min, max]
          */
-        float uniform(float min, float max) noexcept;
+        float uniform(float min = 0.f, float max = 1.f) noexcept;
 
         /**
          * \brief sample an integer uniformly in the inteval [min, max]
