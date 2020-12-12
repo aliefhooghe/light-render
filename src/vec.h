@@ -19,14 +19,51 @@ namespace Xrender {
             return {x + other.x, y + other.y, z + other.z};
         }
 
+        constexpr vect& operator+=(const vect& other) noexcept
+        {
+            x += other.x;
+            y += other.y;
+            z += other.z;
+            return *this;
+        }
+
         constexpr vect operator-(const vect &other) const noexcept
         {
             return {x - other.x, y - other.y, z - other.z};
         }
 
+        constexpr vect operator-=(const vect &other) noexcept
+        {
+            x -= other.x;
+            y -= other.y;
+            z -= other.z;
+            return *this;
+        }
+
         constexpr vect operator*(T a) const noexcept
         {
             return {a * x, a * y, a * z};
+        }
+
+        constexpr vect operator*=(T a) noexcept
+        {
+            x *= a;
+            y *= a;
+            z *= a;
+            return *this;
+        }
+
+        constexpr vect operator/(T a) const noexcept
+        {
+            return {x / a, y / a, z / a};
+        }
+
+        constexpr vect operator/=(T a) noexcept
+        {
+            x /= a;
+            y /= a;
+            z /= a;
+            return *this;
         }
 
         constexpr T norm2() const noexcept
