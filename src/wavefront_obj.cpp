@@ -162,6 +162,10 @@ namespace Xrender
                 break;
             }
         }
+
+        //  push last mtl
+        if (!current_mtl_name.empty())
+            material_map[current_mtl_name] = mtl_builder.make_material();
     }
 
     std::vector<face> wavefront_obj_load(const std::filesystem::path& path)
@@ -210,6 +214,10 @@ namespace Xrender
                                     vertex[v1 - 1u], vertex[v2 - 1u], vertex[v3 - 1u],
                                     normals[vn1 - 1u], normals[vn2 - 1u], normals[vn3 - 1u]));
                         }
+                        else
+                        {
+                            std::cerr << "OBJ load : Warning : invalid vertex/normal id" << std::endl;
+                        }
                     }
                 }
                 break;
@@ -234,6 +242,8 @@ namespace Xrender
                         const auto it = material_map.find(mtl_name);
                         if (it != material_map.end())
                             current_mtl = it->second;
+                        else
+                            std::cerr << "OBJ load : Warning mtl " << mtl_name << " not found" << std::endl;
                     }
                 }
                 break;
