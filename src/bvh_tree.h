@@ -28,7 +28,7 @@ namespace Xrender {
 
         struct box {
             aabb_box box;
-            unsigned int second_child_idx;
+            std::size_t second_child_idx;
         };
 
         using node = 
@@ -43,7 +43,7 @@ namespace Xrender {
 
     private:
         bool _branch_intersect_ray(
-            unsigned int root_index,
+            std::size_t root_index,
             const vecf& pos, const vecf& dir, float distance_max,
             intersection& inter) const noexcept;
         

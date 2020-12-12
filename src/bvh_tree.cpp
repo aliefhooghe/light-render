@@ -110,7 +110,7 @@ namespace Xrender
      * with the greatest axis variance
      */
     template <typename Titerator>
-    vecf find_axis(Titerator begin, Titerator end, unsigned int sample_count)
+    vecf find_axis(Titerator begin, Titerator end, std::size_t sample_count)
     {
         vecf best_axis{};
         float best_variance = -INFINITY;
@@ -149,7 +149,7 @@ namespace Xrender
      * \brief 
      */
     template <typename Titerator>
-    auto find_partition(Titerator begin, Titerator end, unsigned int axis_sample_count)
+    auto find_partition(Titerator begin, Titerator end, std::size_t axis_sample_count)
     {
         const auto count = end - begin;
         const auto pivot_test_count = std::min(count - 1l, 1000l);
@@ -185,7 +185,7 @@ namespace Xrender
     }
 
     template <typename Titerator>
-    unsigned int build_branch(Titerator begin, Titerator end, std::vector<bvh_tree::node> &tree, unsigned int root_index)
+    std::size_t build_branch(Titerator begin, Titerator end, std::vector<bvh_tree::node> &tree, std::size_t root_index)
     {
         if (tree.size() <= root_index)
             tree.resize(1u + 2u * tree.size());
@@ -230,7 +230,7 @@ namespace Xrender
     }
 
     bool bvh_tree::_branch_intersect_ray(
-        unsigned int root_index,
+        std::size_t root_index,
         const vecf &pos, const vecf &dir, float distance_max,
         intersection &inter) const noexcept
     {
@@ -242,7 +242,7 @@ namespace Xrender
             float box_distance;
 
             if (intersect_ray_aabb_box(parent.box, pos, dir, box_distance) &&
-                //(box_distance < distance_max) &&
+                (box_distance < distance_max) &&
                 _branch_intersect_ray(root_index + 1, pos, dir, distance_max, inter))
             {
                 // something hit in left child. Search right child with updated max distance
