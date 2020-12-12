@@ -26,6 +26,8 @@ set(XRENDER_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/material.h
     ${CMAKE_CURRENT_SOURCE_DIR}/material.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/matrix_view.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/outline_preview.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/outline_preview.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/face.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/face.h
     ${CMAKE_CURRENT_SOURCE_DIR}/random_generator.cpp

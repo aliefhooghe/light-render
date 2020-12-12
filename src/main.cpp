@@ -6,7 +6,7 @@
 #include "wavefront_obj.h"
 #include "bvh_tree.h"
 #include "bitmap.h"
-#include "matrix_view.h"
+#include "outline_preview.h"
 #include "camera.h"
 
   // const auto start = std::chrono::steady_clock::now();
@@ -20,7 +20,7 @@
     
 int main()
 {   
-    auto model = Xrender::wavefront_obj_load("../untitled.obj");
+    auto model = Xrender::wavefront_obj_load("../../../render/Rendus/Nefertiti/nef.obj");
     //auto model = Xrender::wavefront_obj_load("../../../render/Rendus/cube/untitled.obj");
     Xrender::bvh_tree tree{model};
     
@@ -28,25 +28,11 @@ int main()
     const auto height = 384;
 
     // Init camera
-    auto camera = Xrender::camera::from_sensor_lens_distance(width, height, 36E-3f, 24E-3f, 0.0, 25E-3f, 25E-3);
+    auto camera = Xrender::camera::from_sensor_lens_distance(width, height, 36E-3f, 24E-3f, 0, 25E-3f, 25E-3);
 
-    // Init img
-    const auto color = Xrender::make_rgb24(0.f);
-    std::vector<Xrender::rgb24> data{width*height, color};
-    auto view = Xrender::matrix_view{data, width, height};
+    // Render preview
+    auto data = Xrender::render_outline_preview(tree, camera, 10);
 
-    Xrender::vecf pos, dir;
-    Xrender::intersection inter;
-
-    // For each pixel
-    for (auto h = 0u; h < height; ++h) {
-        for (auto w = 0u; w < width; ++w) {
-            camera.sample_ray(w, h, pos, dir);
-
-            if (tree.intersect_ray(pos, dir, inter))
-                view(w, h) = Xrender::make_rgb24(inter.distance / 10.f);
-        }
-    }
 
     Xrender::bitmap_write("out.bmp", data, width, height);
     return 0;
