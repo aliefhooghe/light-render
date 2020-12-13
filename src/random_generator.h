@@ -2,6 +2,8 @@
 #define RANDOM_GENERATOR_H_
 
 #include <random>
+#include <array>
+
 #include "vec.h"
 
 namespace Xrender {
@@ -33,6 +35,11 @@ namespace Xrender {
          * \brief sample a point on the unit radius disc
          */
         void unit_disc_uniform(float& x, float &y);
+
+        /**
+         * \brief sample a point on a triangle
+         */
+        vecf triangle_uniform(const std::array<vecf, 3>& triangle);
     }
 
 } /* namespace Xrender */

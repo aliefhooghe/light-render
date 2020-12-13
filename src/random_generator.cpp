@@ -53,7 +53,21 @@ namespace Xrender {
                 y = uniform(-1.f, 1.f);
             }while(x*x + y*y > 1.f);
         }
-    } 
+
+        vecf triangle_uniform(const std::array<vecf, 3>& triangle)
+        {
+            const auto u = uniform();
+            const auto v = uniform();
+            const auto w = 1.f - (u + v);
+            if (w < 0)
+                return (1.f - u) * triangle[0] +
+                    (1.f - v) * triangle[1] +
+                    (1.f - w) * triangle[2];
+            else
+                return u * triangle[0] +
+                    v * triangle[1] +
+                    w * triangle[2];
+        }
+    }
 
 } /* namespace Xrender */
-
