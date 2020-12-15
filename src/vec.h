@@ -45,11 +45,24 @@ namespace Xrender {
             return {a * x, a * y, a * z};
         }
 
+        constexpr vect operator*(const vect<T>& other) const noexcept
+        {
+            return {x * other.x, y * other.y, z * other.z};
+        }
+
         constexpr vect operator*=(T a) noexcept
         {
             x *= a;
             y *= a;
             z *= a;
+            return *this;
+        }
+
+        constexpr vect operator*=(const vect<T>& other) noexcept
+        {
+            x *= other.x;
+            y *= other.y;
+            z *= other.z;
             return *this;
         }
 
@@ -96,7 +109,7 @@ namespace Xrender {
     template <typename T>
     vect<T> operator*(T a, const vect<T>& v) noexcept
     {
-        return {a * v.x, a * v.y, a * v.z}; 
+        return {a * v.x, a * v.y, a * v.z};
     }
 
     template <typename T>
@@ -131,7 +144,7 @@ namespace Xrender {
         return (x - y).norm2();
     }
 
-    template <typename T> 
+    template <typename T>
     vect<T> unit_dir(const vect<T>& from, const vect<T>& to) noexcept
     {
         return (to - from).normalized();
