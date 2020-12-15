@@ -7,7 +7,7 @@
 
 namespace Xrender {
 
-    std::vector<rgb24> render_outline_preview(bvh_tree& tree, const camera& cam, std::size_t sample_count = 1u);
+    std::vector<rgb24> render_outline_preview(const bvh_tree& tree, const camera& cam, std::size_t sample_count = 1u);
 
 }
 
