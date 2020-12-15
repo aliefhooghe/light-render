@@ -26,5 +26,12 @@ namespace Xrender {
             return std::get<lambertian_material>(mtl).absorption;
     }
 
-} /* namespace Xrender */
+    vecf brdf(const material& mtl, const vecf& normal, const vecf& idir, const vecf& edir)
+    {
+        if (is_source(mtl))
+            return std::get<source_material>(mtl).emission;
+        else
+            return std::get<lambertian_material>(mtl).absorption;
+    }
 
+} /* namespace Xrender */

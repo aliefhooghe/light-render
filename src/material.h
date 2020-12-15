@@ -28,6 +28,9 @@ namespace Xrender
 
     vecf material_preview_color(const material& mtl);
 
+
+    vecf brdf(const material& mtl, const vecf& normal, const vecf& idir, const vecf& edir);
+
 } // namespace Xrender
 
 #endif  
