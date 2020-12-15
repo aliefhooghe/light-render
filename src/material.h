@@ -29,8 +29,19 @@ namespace Xrender
     vecf material_preview_color(const material& mtl);
 
 
-    vecf brdf(const material& mtl, const vecf& normal, const vecf& idir, const vecf& edir);
+    /**
+     * \brief Return an estimator of the brdf
+     * \param[in] face material
+     * \param[in] normal normal at intersection point
+     * \param[in] idir incoming vector
+     * \param[out] edir emitted vector according to some angular density
+     * \return the estimator
+     */
+    vecf brdf(const material& mtl, const vecf& normal, const vecf& idir, vecf& edir);
+
+
+
 
 } // namespace Xrender
 
-#endif  
+#endif

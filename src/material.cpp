@@ -1,4 +1,4 @@
-
+#include "random_generator.h"
 #include "material.h"
 
 namespace Xrender {
@@ -26,12 +26,17 @@ namespace Xrender {
             return std::get<lambertian_material>(mtl).absorption;
     }
 
-    vecf brdf(const material& mtl, const vecf& normal, const vecf& idir, const vecf& edir)
+    vecf brdf(const material& mtl, const vecf& normal, const vecf& idir, vecf& edir)
     {
         if (is_source(mtl))
+        {
             return std::get<source_material>(mtl).emission;
+        }
         else
+        {
+            edir = rand::unit_hemisphere_uniform(normal);
             return std::get<lambertian_material>(mtl).absorption;
+        }
     }
 
 } /* namespace Xrender */

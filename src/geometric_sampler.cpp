@@ -36,7 +36,7 @@ namespace Xrender
         vecf pos = start_pos;
         vecf dir = start_dir;
         vecf estimator_brdf_coeff = {1.f, 1.f, 1.f};
-        float estimator_geometric_coeff = 1.f;
+        float estimator_geometric_coeff = start_dir.y;
 
         for (auto i = 0u; i < max_bounce; )
         {
@@ -53,15 +53,18 @@ namespace Xrender
 
             if (tree.intersect_ray(pos, dir, inter))
             {
+                vecf next_dir;
+
+                //  Computenext dir and evaluate brdf (or luminance for source)
+                estimator_brdf_coeff *= brdf(inter.triangle->mtl, inter.normal, dir, next_dir);
+
                 if (is_source(inter.triangle->mtl))
                 {
                     return estimator_brdf_coeff * estimator_geometric_coeff;
                 }
                 else
                 {
-                    const auto next_dir = rand::unit_hemisphere_uniform(inter.normal);
                     estimator_geometric_coeff *= dot(next_dir, inter.normal);
-                    estimator_brdf_coeff *= brdf(inter.triangle->mtl, inter.normal, dir, next_dir);
                     pos = inter.pos;
                     dir = next_dir;
                 }
