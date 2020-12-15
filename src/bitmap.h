@@ -1,6 +1,7 @@
 #ifndef XRENDER_BITMAP_H_
 #define XRENDER_BITMAP_H_
 
+#include <algorithm>
 #include <vector>
 #include <stdint.h>
 #include <filesystem>
@@ -19,9 +20,9 @@ namespace Xrender {
         static rgb24 from_float(float red, float green, float blue)
         {
             return from_uint(
-                static_cast<uint8_t>(red * 255.f), 
-                static_cast<uint8_t>(green * 255.f),
-                static_cast<uint8_t>(blue * 255.f));
+                static_cast<uint8_t>(std::clamp(red, 0.f, 1.f) * 255.f),
+                static_cast<uint8_t>(std::clamp(green, 0.f, 1.f) * 255.f),
+                static_cast<uint8_t>(std::clamp(blue, 0.f, 1.f) * 255.f));
         }
 
         static rgb24 from_vecf(const vecf& color)
