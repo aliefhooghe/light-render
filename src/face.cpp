@@ -10,7 +10,7 @@ namespace Xrender {
         const vecf b = p3 - p1;
 
         // sens direct
-        const auto normal = cross(a, b);
+        const auto normal = cross(a, b).normalized();
 
         return {
                 mtl,
@@ -19,7 +19,7 @@ namespace Xrender {
                 normal
         };
     }
-    
+
     face make_face(
         material mtl,
         vecf p1, vecf p2, vecf p3,
@@ -29,7 +29,7 @@ namespace Xrender {
         const vecf b = p3 - p1;
 
         // sens direct
-        const auto normal = cross(a, b);
+        const auto normal = (n1 + n2 + n3) / 3.f;
 
         return  {
                 mtl,
@@ -38,7 +38,7 @@ namespace Xrender {
                 normal
             };
     }
-    
+
     face make_face(
         material mtl,
         vecf p1, vecf p2, vecf p3,
