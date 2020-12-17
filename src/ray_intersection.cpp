@@ -3,66 +3,42 @@
 
 namespace Xrender {
 
-    bool intersect_ray_face(const face& f, const vecf& pos, const vecf& dir, intersection& inter)
+    bool intersect_ray_face(const face& fa, const vecf& pos, const vecf& dir, intersection& inter)
     {
-        const auto dot_dir_normal = dot(dir, f.normal);
-
-        if (dot_dir_normal >= 0.0f)
-            return false; // to do : mieux
-
-        // triangle = abc
-
-        //  Compute triangle plane intersection
-        const auto pos_a = f.points[0] - pos;
-        const float k =  // todo ne dépend pas du signe de dot_dir_normal
-            dot(pos_a, f.normal) / dot_dir_normal;
-
-        //  if ray does not intersect triangle plane
-        if (k <= 0.f)
+        const float EPSILON = 0.000001f;
+        vecf vertex0 = fa.points[0];
+        vecf vertex1 = fa.points[1];
+        vecf vertex2 = fa.points[2];
+        vecf edge1, edge2, h, s, q;
+        float a,f,u,v, w;
+        edge1 = vertex1 - vertex0;
+        edge2 = vertex2 - vertex0;
+        h = cross(dir, edge2);
+        a = dot(edge1, h);
+        if (a > -EPSILON && a < EPSILON)
+            return false;    // This ray is parallel to this triangle.
+        f = 1.0f / a;
+        s = pos - vertex0;
+        u = f * dot(s, h);
+        if (u < 0.0 || u > 1.f)
             return false;
-
-        const auto intersect_point = pos + k * dir;
-
-        const auto a_b = f.points[1] - f.points[0];
-        const auto b_c = f.points[2] - f.points[1];
-        const auto c_a = f.points[0] - f.points[2];
-
-        const auto a_intersetc_point = intersect_point - f.points[0]; 
-        const auto b_intersect_point = intersect_point - f.points[1];
-        const auto c_intersect_point = intersect_point - f.points[2];
-
-        float u, v, w; // barycentric coordinate into the triangle
-
-        const auto test = cross(a_b, a_intersetc_point);
-        if (dot(f.normal, test) < 0)
+        q = cross(s, edge1);
+        v = f * dot(dir, q);
+        if (v < 0.f || u + v > 1.f)
             return false;
-
-        const auto test2 = cross(b_c, b_intersect_point);
-        if ((u = dot(f.normal, test2)) < 0)
+        // At this stage we can compute t to find out where the intersection point is on the line.
+        float t = f * dot(edge2, q);
+        if (t > EPSILON) // ray intersection
+        {
+            w = 1.f - (u + v);
+            inter.pos = pos + t * dir;
+            inter.triangle = &fa;
+            inter.distance = t;
+            inter.normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
+            return true;
+        }
+        else // This means that there is a line intersection but not a ray intersection.
             return false;
-    
-        const auto test3 = cross(c_a, c_intersect_point);
-        if ((v = dot(f.normal, test3)) < 0)
-            return false;
-
-        // compute the barycentric coordinate
-        const auto double_area = cross(a_b, c_a).norm();
-        u /= double_area;
-        v /= double_area;
-        w = 1.0f - (u + v);
-
-        if (w < 0.f)
-            return false;
-
-        // fill intersection
-        inter.pos = intersect_point;
-        inter.distance = k;
-        inter.triangle = &f;
-
-        //  normal interpolation
-        inter.normal = u * f.normals[0] + v * f.normals[1] + w * f.normals[2];
-
-        return true;
     }
 
 } /* Xrender */
