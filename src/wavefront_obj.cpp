@@ -17,17 +17,23 @@ namespace Xrender
         enum mtl_type
         {
             SOURCE,
-            LAMBERTIAN
+            LAMBERTIAN,
+            MIRROR,
+            GLASS
         };
 
         void decl_new_mtl();
         void decl_mtl_type(mtl_type);
-        void decl_ka(const vecf &kd);
-        void decl_kd(const vecf &kd);
-        void decl_ks(const vecf &kd);
+        void decl_ka(const vecf& kd);
+        void decl_kd(const vecf& kd);
+        void decl_ks(const vecf& kd);
+        void decl_tf(const vecf& tf);
         void decl_ns(float ni);
         void decl_ni(float ns);
         void decl_temperature(float t);
+        void decl_cauchy_a(float a);
+        void decl_cauchy_b(float b);
+        void decl_reflexivity(float r);
         material make_material();
 
     private:
@@ -36,9 +42,13 @@ namespace Xrender
         vecf _ka;
         vecf _kd;
         vecf _ks;
+        vecf _tf;
         float _ni;
         float _ns;
         float _temperature;
+        float _cauchy_a;
+        float _cauchy_b;
+        float _reflexivity;
     };
 
     void material_builder::decl_new_mtl()
@@ -53,10 +63,19 @@ namespace Xrender
         switch (type)
         {
         case LAMBERTIAN:
-            _kd = vecf{0.8, 0.8, 0.8};
+            _kd = {0.8, 0.8, 0.8};
             break;
         case SOURCE:
             _temperature = 4000.0f;
+            break;
+        case MIRROR:
+            _ks = {0.99f, 0.99f, 0.99f};
+            break;
+        case GLASS:
+            _reflexivity = 0.1f;
+            _tf = {0.8, 0.8, 0.8};
+            _cauchy_a = 1.2f;
+            _cauchy_b = 1.3f;
             break;
         }
     }
@@ -76,6 +95,11 @@ namespace Xrender
         _ks = ks;
     }
 
+    void material_builder::decl_tf(const vecf& tf)
+    {
+        _tf = tf;
+    }
+
     void material_builder::decl_ns(float ni)
     {
         _ni = ni;
@@ -91,6 +115,21 @@ namespace Xrender
         _temperature = t;
     }
 
+    void material_builder::decl_cauchy_a(float a)
+    {
+        _cauchy_a = a;
+    }
+
+    void material_builder::decl_cauchy_b(float b)
+    {
+        _cauchy_b = b;
+    }
+
+    void material_builder::decl_reflexivity(float r)
+    {
+        _reflexivity = r;
+    }
+
     material material_builder::make_material()
     {
         switch (_current_mtl_type)
@@ -101,8 +140,14 @@ namespace Xrender
         case SOURCE:
             return make_source_material(_temperature);
             break;
+        case MIRROR:
+            return make_mirror_material(_ks);
+            break;
+        case GLASS:
+            return make_glass_material(_reflexivity, _tf, _ks, _cauchy_a, _cauchy_b);
+            break;
         default:
-            return make_lambertian_material();
+            throw std::runtime_error("FATAL ERROR");
         }
     }
 
@@ -140,9 +185,9 @@ namespace Xrender
                     {
                         switch (c)
                         {
-                            case 'a': mtl_builder.decl_ka(vecf{x, y, z}); break;
-                            case 'd': mtl_builder.decl_kd(vecf{x, y, z}); break;
-                            case 's': mtl_builder.decl_ks(vecf{x, y, z}); break;
+                            case 'a': mtl_builder.decl_ka({x, y, z}); break;
+                            case 'd': mtl_builder.decl_kd({x, y, z}); break;
+                            case 's': mtl_builder.decl_ks({x, y, z}); break;
                         }
                     }
                 }
@@ -154,10 +199,31 @@ namespace Xrender
                 }
                 break;
 
+                case 'T':
+                {
+                    float x, y, z;
+                    if (std::sscanf(line.c_str(), "Tf %f %f %f", &x, &y, &z) == 3)
+                        mtl_builder.decl_tf({x, y, z});
+                }
+                break;
+
                 case '#': // comment or annotation
                 {
-                    if (line.rfind("#Source", 0) == 0) mtl_builder.decl_mtl_type(material_builder::SOURCE);
+                    if      (line.rfind("#Source", 0) == 0) mtl_builder.decl_mtl_type(material_builder::SOURCE);
                     else if (line.rfind("#Lambertian", 0) == 0) mtl_builder.decl_mtl_type(material_builder::LAMBERTIAN);
+                    else if (line.rfind("#Mirror", 0) == 0) mtl_builder.decl_mtl_type(material_builder::MIRROR);
+                    else if (line.rfind("#Glass", 0) == 0) mtl_builder.decl_mtl_type(material_builder::GLASS);
+                    else
+                    {
+                        float value;
+                        switch (line[1])
+                        {
+                            case 'T': if (std::sscanf(line.c_str(), "#T %f", &value) == 1) mtl_builder.decl_temperature(value);
+                            case 'A': if (std::sscanf(line.c_str(), "#A %f", &value) == 1) mtl_builder.decl_cauchy_a(value);
+                            case 'B': if (std::sscanf(line.c_str(), "#B %f", &value) == 1) mtl_builder.decl_cauchy_b(value);
+                            case 'R': if (std::sscanf(line.c_str(), "#R %f", &value) == 1) mtl_builder.decl_reflexivity(value);
+                        }
+                    }
                 }
                 break;
             }
@@ -176,8 +242,8 @@ namespace Xrender
         std::ifstream stream{path};
 
         std::map<std::string, material> material_map{};
-        material current_mtl = make_lambertian_material();
-        
+        material current_mtl;
+
         if (!stream.is_open())
             throw std::invalid_argument("obj path");
 
@@ -210,7 +276,7 @@ namespace Xrender
                             vn1 <= normals.size() && vn2 <= normals.size() && vn3 <= normals.size())
                         {
                             model.push_back(
-                                make_face(current_mtl, 
+                                make_face(current_mtl,
                                     vertex[v1 - 1u], vertex[v2 - 1u], vertex[v3 - 1u],
                                     normals[vn1 - 1u], normals[vn2 - 1u], normals[vn3 - 1u]));
                         }
@@ -228,7 +294,7 @@ namespace Xrender
                     if (std::sscanf(line.c_str(), "mtllib %s\n", mtl_lib_filename) == 1)
                     {
                         load_mtl_lib(
-                            std::filesystem::path{path}.replace_filename(mtl_lib_filename), 
+                            std::filesystem::path{path}.replace_filename(mtl_lib_filename),
                             material_map);
                     }
                 }

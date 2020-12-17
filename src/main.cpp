@@ -15,19 +15,19 @@ int main()
     auto model = Xrender::wavefront_obj_load("../../untitled.obj");
     Xrender::bvh_tree tree{model};
 
-    const auto width = 576;
-    const auto height = 384;
+    const auto width = 576*4;
+    const auto height = 384*4;
 
     // Init camera
-    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 13E-3, 70E-3, 3.f);
+    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 18E-3, 80E-3, 3.f);
 
     // Render an outlie preview
-    auto preview = Xrender::render_outline_preview(tree, camera, 5);
+    auto preview = Xrender::render_outline_preview(tree, camera, 1);
     Xrender::bitmap_write("preview.bmp", preview, width, height);
 
     std::cout << "Rendered Preview.\nRendering lights" << std::endl;
 
-    auto rendered_sensor = Xrender::mc_naive(tree, camera, 250);
+    auto rendered_sensor = Xrender::mc_naive(tree, camera, 25);
     std::vector<Xrender::rgb24> rendered_bitmap(width * height);
 
     std::transform(

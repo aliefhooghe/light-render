@@ -28,7 +28,6 @@ namespace Xrender {
         const vecf a = p2 - p1;
         const vecf b = p3 - p1;
 
-        // sens direct
         const auto normal = (n1 + n2 + n3) / 3.f;
 
         return  {

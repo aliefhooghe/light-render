@@ -64,7 +64,7 @@ namespace Xrender
                 }
                 else
                 {
-                    estimator_geometric_coeff *= dot(next_dir, inter.normal);
+                    estimator_geometric_coeff *= std::abs(dot(next_dir, inter.normal));
                     pos = inter.pos;
                     dir = next_dir;
                 }
@@ -107,7 +107,7 @@ namespace Xrender
                     pixel_estimator += path_sample_geometric(tree, pos, dir, max_bounce);
                 }
 
-                view(w, h) = 2.f * (pixel_estimator / static_cast<float>(sample_pp_count));
+                view(w, h) = 3.f * (pixel_estimator / static_cast<float>(sample_pp_count));
             }
         }
 

@@ -14,17 +14,34 @@ namespace Xrender
         vecf absorption;
     };
 
+    struct glass_material {
+        float reflexivity;
+        vecf tf;
+        vecf ks;
+        float nr;
+        float ng;
+        float nb;
+    };
+
+    struct mirror_material {
+        vecf reflection;
+    };
+
     using material =
         std::variant<
             lambertian_material,
-            source_material
+            source_material,
+            mirror_material,
+            glass_material
         >;
 
 
     bool is_source(const material& mtl) noexcept;
 
-    material make_source_material(float temperature = 4000.f);
-    material make_lambertian_material(const vecf absorption = {0.8f, 0.8f, 0.8f});
+    material make_source_material(float temperature);
+    material make_lambertian_material(const vecf& absorption);
+    material make_mirror_material(const vecf& reflection);
+    material make_glass_material(float reflexivity, const vecf& tf, const vecf& ks, float a, float b);
 
     vecf material_preview_color(const material& mtl);
 
