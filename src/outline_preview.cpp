@@ -30,7 +30,9 @@ namespace Xrender
 
                     if (tree.intersect_ray(pos, dir, inter))
                     {
-                        estimator += material_preview_color(inter.triangle->mtl);
+                        estimator += (
+                            material_preview_color(inter.triangle->mtl) *
+                            std::abs(dot(dir, inter.normal)));
                         hit = true;
                     }
                 }
