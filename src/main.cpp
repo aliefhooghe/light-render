@@ -1,6 +1,7 @@
 
 
 #include <iostream>
+#include <chrono>
 
 #include "wavefront_obj.h"
 #include "bvh_tree.h"
@@ -19,7 +20,7 @@ int main()
     const auto height = 384;
 
     // Init camera
-    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 1E-3, 50E-3, 3.f);
+    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 10E-3, 50E-3, 3.f);
 
     // Render an outlie preview
     auto preview = Xrender::render_outline_preview(tree, camera, 1);
@@ -27,9 +28,16 @@ int main()
 
     std::cout << "Rendered Preview.\nRendering lights" << std::endl;
 
-    auto rendered_sensor = Xrender::mc_naive(tree, camera, 100);
-    std::vector<Xrender::rgb24> rendered_bitmap(width * height);
+    auto start = std::chrono::steady_clock::now();
+    auto rendered_sensor = Xrender::mc_naive(tree, camera, 12000);
+    auto end = std::chrono::steady_clock::now();
 
+    std::cout
+        << "Render took "
+        << std::chrono::duration_cast<std::chrono::seconds>(end - start).count()
+        << " seconds" << std::endl;
+
+    std::vector<Xrender::rgb24> rendered_bitmap(width * height);
     std::transform(
         rendered_sensor.begin(),
         rendered_sensor.end(),
