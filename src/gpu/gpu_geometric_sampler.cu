@@ -24,9 +24,9 @@ namespace Xrender {
     }    
 
     __device__ __forceinline__ float3 gpu_sample_path(
-        const gpu_face *model, const int face_count,
+        const gpu_bvh_node *bvh,
         const float3& start_pos, const float3& start_dir, 
-        curandState *state)//, int max_bounce)
+        curandState *state)
     {
         gpu_intersection inter;
         float3 pos = start_pos;
@@ -47,8 +47,8 @@ namespace Xrender {
                 break;
             }
 
-            if (gpu_intersect_ray_model(model, face_count, pos, dir, inter)) {
-                
+            if (gpu_intersect_ray_bvh(bvh, pos, dir, inter))
+            {    
                 const auto mtl = inter.triangle->mtl;
                 brdf_coeff *= gpu_preview_color(mtl);
 
@@ -73,8 +73,7 @@ namespace Xrender {
     }
 
     __global__ void path_sampler_kernel(
-        const gpu_face *model, 
-        const int face_count,
+        const gpu_bvh_node *bvh,
         const device_camera cam,
         const int sample_count, 
         float3 *image)
@@ -95,39 +94,38 @@ namespace Xrender {
 
         for(auto i = 0; i < sample_count; i++) {
             dir = cam.sample_ray(&rand_state, pos, x, y);
-            estimator += gpu_sample_path(model, face_count, pos, dir, &rand_state);
+            estimator += gpu_sample_path(bvh, pos, dir, &rand_state);
         }
 
         image[pixel_index] = (3.f / sample_count) * estimator;
     }
 
     std::vector<float3> gpu_naive_mc(
-        const std::vector<gpu_face>& model,
+        const std::vector<gpu_bvh_node>& tree,
         const device_camera& cam,
-        const int sample_per_pixel,
-        const int max_bounce)
+        const int sample_per_pixel)
     {
         const auto width = cam.get_image_width();
         const auto height = cam.get_image_height();
         const auto device_image_size = width * height * sizeof(float3);
-        const auto device_model_size = model.size() * sizeof(gpu_face);
+        const auto device_bvh_size = tree.size() * sizeof(gpu_bvh_node);
 
         float3 *device_image = nullptr;
-        gpu_face *device_model;
+        gpu_bvh_node *device_bvh = nullptr;
 
         std::cout << "@GPU RENDER " << sample_per_pixel << "SPP" << std::endl;
 
         //  Allocate memory on device for image and model
         CUDA_CHECK(cudaMalloc(&device_image, device_image_size));
-        CUDA_CHECK(cudaMalloc(&device_model, device_model_size));
+        CUDA_CHECK(cudaMalloc(&device_bvh, device_bvh_size));
 
         //  Copy model to the device
-        CUDA_CHECK(cudaMemcpy(device_model, model.data(), device_model_size, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMemcpy(device_bvh, tree.data(), device_bvh_size, cudaMemcpyHostToDevice));
 
         //  Do the computations
 
         const auto start = std::chrono::steady_clock::now();
-        path_sampler_kernel<<<height, width>>>(device_model, model.size(), cam, sample_per_pixel, device_image);
+        path_sampler_kernel<<<height, width>>>(device_bvh, cam, sample_per_pixel, device_image);
         CUDA_CHECK(cudaGetLastError());
         
         // Wait for kernel completion
@@ -144,7 +142,7 @@ namespace Xrender {
         CUDA_CHECK(cudaMemcpy(result.data(), device_image, device_image_size, cudaMemcpyDeviceToHost));
 
         CUDA_CHECK(cudaFree(device_image));
-        CUDA_CHECK(cudaFree(device_model));
+        CUDA_CHECK(cudaFree(device_bvh));
 
         return result;
     }

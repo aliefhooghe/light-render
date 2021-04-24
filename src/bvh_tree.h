@@ -41,7 +41,9 @@ namespace Xrender {
         bool intersect_ray(const vecf& pos, const vecf& dir, intersection& inter) const noexcept;
         bool intersect_seg(const vecf& a, const vecf& b) const noexcept;
 
-    private:
+        std::size_t depth(int root = 0) const noexcept;
+
+    //private:
         bool _branch_intersect_ray(
             std::size_t root_index,
             const vecf& pos, const vecf& dir, float distance_max,

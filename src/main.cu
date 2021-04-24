@@ -38,39 +38,9 @@ auto make_device_model(const std::vector<Xrender::face>& model)
     
     std::transform(
         model.begin(), model.end(), device_model.begin(),
-        [](const Xrender::face& f)
-        {
-            Xrender::gpu_face ret;
-            for (int i = 0; i < 3; i++)
-            {
-                ret.points[i].x = f.points[i].x;
-                ret.points[i].y = f.points[i].y;
-                ret.points[i].z = f.points[i].z;
-            }
-            for (int i = 0; i < 3; i++)
-            {
-                ret.normals[i].x = f.normals[i].x;
-                ret.normals[i].y = f.normals[i].y;
-                ret.normals[i].z = f.normals[i].z;
-            }
+        Xrender::make_gpu_face);
 
-            ret.normal.x = f.normal.x;
-            ret.normal.y = f.normal.y;
-            ret.normal.z = f.normal.z;
-
-            if (Xrender::is_source(f.mtl)) {
-                ret.mtl = Xrender::gpu_make_source_material();
-            }
-            else {
-                const auto vecf_color = Xrender::material_preview_color(f.mtl);
-                const float3 color = {vecf_color.z, vecf_color.y, vecf_color.x}; 
-                ret.mtl = Xrender::gpu_make_lambertian_materal(color);
-            }
-
-            return ret;
-        });
-
-        return device_model;
+    return device_model;
 }
 
 void write_bitmap(std::vector<Xrender::vecf> rendered_sensor, const std::string& path, size_t width, size_t height)
@@ -105,20 +75,27 @@ void write_bitmap(std::vector<float3> rendered_sensor, const std::string& path, 
 }
 
 // --
-#define DISABLE_CPU_COMPUTE
+
+#define ENABLE_CPU_COMPUTE
+#define ENABLE_GPU_COMPUTE
+#define ENABLE_PREVIEW
+#define ENABLE_RENDER
 
 int main()
 {
     auto model = Xrender::wavefront_obj_load("../../untitled.obj");
     auto device_model = make_device_model(model);
 
-    Xrender::bvh_tree tree{model};
+    const Xrender::bvh_tree tree{model};
+    const auto gpu_tree = Xrender::make_gpu_bvh(tree);
+
+    std::cout << "Bvh max depth is " << tree.depth() << std::endl;
 
     const auto width = 36 * 20;
     const auto height = 24 * 20;
 
-    const auto preview_sample_count = 12;
-    const auto render_sample_count = 4096;
+    const auto preview_sample_count = 128;
+    const auto render_sample_count = 128;
 
     // Init camera
     auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 10E-3, 50E-3, 3.f);
@@ -126,7 +103,7 @@ int main()
 
     std::chrono::steady_clock::time_point start, end;
 
-#ifndef DISABLE_CPU_COMPUTE
+#if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // CPU PREVIEW
     start = std::chrono::steady_clock::now();
     auto preview = Xrender::render_outline_preview(tree, camera, preview_sample_count);
@@ -141,9 +118,10 @@ int main()
                 << cpu_preview_duration
                 << " ms; Start gpu preview " << std::endl;
 #endif
+#if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // GPU PREVIEW
     start = std::chrono::steady_clock::now();
-    const auto gpu_review = Xrender::gpu_render_outline_preview(device_model, device_camera, preview_sample_count);
+    const auto gpu_review = Xrender::gpu_render_outline_preview(gpu_tree, device_camera, preview_sample_count);
     end = std::chrono::steady_clock::now();
 
     const auto gpu_preview_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -155,8 +133,8 @@ int main()
     Xrender::bitmap_write("preview-gpu.bmp", gpu_review, width, height);
 
     std::cout << "Rendered Preview.\nRendering lights on cpu" << std::endl;
-
-#ifndef DISABLE_CPU_COMPUTE
+#endif
+#if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_RENDER)
     //  CPU RENDER
     start = std::chrono::steady_clock::now();
     auto rendered_sensor = Xrender::mc_naive(tree, camera, render_sample_count);
@@ -172,9 +150,10 @@ int main()
 
     std::cout << "Rendered light on cpu.\nRendering lights on gpu" << std::endl;
 #endif
+#if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_RENDER)
     //GPU RENDER
     start = std::chrono::steady_clock::now();
-    auto gpu_rendered_sensor = Xrender::gpu_naive_mc(device_model, device_camera, render_sample_count);
+    auto gpu_rendered_sensor = Xrender::gpu_naive_mc(gpu_tree, device_camera, render_sample_count);
     end = std::chrono::steady_clock::now();
     
     const auto gpu_render_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -187,25 +166,38 @@ int main()
     write_bitmap(gpu_rendered_sensor, "render-gpu.bmp", width, height);
 
     std::cout << "Done." << std::endl;
-
-#ifndef DISABLE_CPU_COMPUTE
-    std::cout << "\nSummary :\n"
-            <<  "  Preview : \n"
-                "    cpu     : " << cpu_preview_duration << " ms\n"
-                "    gpu     : " << gpu_preview_duration << " ms\n"
-                "    speedup : " << ((100 * cpu_preview_duration / gpu_preview_duration)) << " %\n"
-                "  Render : \n"
-                "    cpu     : " << cpu_render_duration << " ms\n"
-                "    gpu     : " << gpu_render_duration << " ms\n"
-                "    speedup : " << ((100 * cpu_render_duration / gpu_render_duration)) << " %\n"
-            << std::endl;
-#else
-    std::cout << "\nSummary :\n"
-            <<  "  Preview : \n"
-                "    gpu     : " << gpu_preview_duration << " ms\n"
-                "  Render : \n"
-                "    gpu     : " << gpu_render_duration << " ms\n"
-            << std::endl;
 #endif
+
+    std::cout << "\nSummary :\n" <<
+
+#ifdef ENABLE_PREVIEW  
+                "  Preview : \n"
+#ifdef ENABLE_CPU_COMPUTE
+                "    cpu     : " << cpu_preview_duration << " ms\n"
+#endif
+#ifdef ENABLE_GPU_COMPUTE
+                "    gpu     : " << gpu_preview_duration << " ms\n"
+#endif
+#if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_GPU_COMPUTE)
+                "    speedup : " << ((100 * cpu_preview_duration / gpu_preview_duration)) << " %\n"
+#endif
+
+#endif
+
+#ifdef ENABLE_RENDER
+                "  Render : \n"
+#ifdef ENABLE_CPU_COMPUTE
+                "    cpu     : " << cpu_render_duration << " ms\n"
+#endif
+#ifdef ENABLE_GPU_COMPUTE
+                "    gpu     : " << gpu_render_duration << " ms\n"
+#endif
+#if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_GPU_COMPUTE)
+                "    speedup : " << ((100 * cpu_render_duration / gpu_render_duration)) << " %\n"
+#endif
+
+#endif
+            << std::endl;
+
     return 0;
 }

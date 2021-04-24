@@ -11,8 +11,7 @@ namespace Xrender {
 
 
     __global__ void preview_kernel(
-        const gpu_face *model, 
-        const int face_count,
+        const gpu_bvh_node *tree,
         const device_camera cam,
         const int sample_count, 
         float3 *image)
@@ -34,9 +33,11 @@ namespace Xrender {
 
         for (auto i = 0; i < sample_count; i++) {
             dir = cam.sample_ray(&rand_state, pos, x, y);     
-            if (gpu_intersect_ray_model(model, face_count, pos, dir, inter))
-                estimator = estimator + fabs(_dot(dir, inter.normal)) * 
-                            gpu_preview_color(inter.triangle->mtl);
+            if (gpu_intersect_ray_bvh(tree, pos, dir, inter))
+                estimator += gpu_preview_color(inter.triangle->mtl) * 
+                                fabs(_dot(dir, inter.normal));
+            else
+                estimator += float3{0.f, 0.f, 1.f};
         }
 
         image[pixel_index] = (1.f / sample_count) * estimator;
@@ -50,17 +51,17 @@ namespace Xrender {
             static_cast<unsigned char>(color.z * 255.f)};
     }
 
-    std::vector<rgb24> gpu_render_outline_preview(const std::vector<gpu_face>& model, const device_camera& cam, std::size_t sample_count)
+    std::vector<rgb24> gpu_render_outline_preview(const std::vector<gpu_bvh_node>& tree, const device_camera& cam, std::size_t sample_count)
     {
         const auto width = cam.get_image_width();
         const auto height = cam.get_image_height();
 
         // Copy device model to device
-        const auto model_size = model.size() * sizeof(gpu_face);
-        gpu_face *device_model = nullptr;
+        const auto bvh_size = tree.size() * sizeof(gpu_bvh_node);
+        gpu_bvh_node *device_bvh = nullptr;
 
-        CUDA_CHECK(cudaMalloc(&device_model, model_size));
-        CUDA_CHECK(cudaMemcpy(device_model, model.data(), model_size, cudaMemcpyHostToDevice));
+        CUDA_CHECK(cudaMalloc(&device_bvh, bvh_size));
+        CUDA_CHECK(cudaMemcpy(device_bvh, tree.data(), bvh_size, cudaMemcpyHostToDevice));
 
         // Init device image
         const auto device_image_size = width * height * sizeof(float3);
@@ -69,7 +70,7 @@ namespace Xrender {
         CUDA_CHECK(cudaMalloc(&device_image, device_image_size));
 
         const auto start = std::chrono::steady_clock::now();
-        preview_kernel<<<height, width>>>(device_model, model.size(), cam, sample_count, device_image);
+        preview_kernel<<<height, width>>>(device_bvh, cam, sample_count, device_image);
         CUDA_CHECK(cudaGetLastError());
         
         // Wait for kernel completion
@@ -91,7 +92,7 @@ namespace Xrender {
             output.begin(), output.end(), rgb24_output.begin(),
             _color_of_float3);
 
-        CUDA_CHECK(cudaFree(device_model));
+        CUDA_CHECK(cudaFree(device_bvh));
         CUDA_CHECK(cudaFree(device_image));
 
         return rgb24_output;

@@ -3,16 +3,15 @@
 
 #include <vector>
 
-#include "gpu_face.cuh"
+#include "gpu_bvh.cuh"
 #include "gpu_camera.cuh"
 
 namespace Xrender {
 
     std::vector<float3> gpu_naive_mc(
-        const std::vector<gpu_face>& model,
+        const std::vector<gpu_bvh_node>& tree,
         const device_camera& camera,
-        const int sample_per_pixel = 1,
-        const int max_bounce = 8);
+        const int sample_per_pixel = 1);
 
 }
 

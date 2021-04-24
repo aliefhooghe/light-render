@@ -225,7 +225,7 @@ namespace Xrender
         const auto node_count =
             build_branch(model_faces.begin(), model_faces.end(), _tree, 0u);
 
-        std::printf("Bvh tree was built. Use %u/%lu allocated nodes\n", node_count, _tree.size());
+        std::printf("Bvh tree was built. Use %u/%lu allocated nodes : shrink to size\n", node_count, _tree.size());
         _tree.resize(node_count);
     }
 
@@ -283,6 +283,21 @@ namespace Xrender
         const auto distance = segment.norm();
         intersection dummy;
         return _branch_intersect_ray(0, a, (1.f / distance) * segment, distance, dummy);
+    }
+
+    std::size_t bvh_tree::depth(int root) const noexcept
+    {
+        const auto& node = _tree[root];
+
+        if (std::holds_alternative<box>(node)) {
+            const auto& b = std::get<box>(node);
+            const auto depth_left = depth(root + 1);
+            const auto depth_right = depth(b.second_child_idx);
+            return 1 + std::max(depth_left, depth_right);
+        }
+        else {
+            return 1u;
+        }
     }
 
 } // namespace Xrender

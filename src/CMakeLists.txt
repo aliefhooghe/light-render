@@ -52,6 +52,7 @@ set(XRENDER_CORE_SRC
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/vector_operations.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/vector_operations.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/cuda_exception.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gpu_bvh.cuh
 )
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})

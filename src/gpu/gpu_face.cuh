@@ -6,6 +6,8 @@
 #include "vector_operations.cuh"
 #include "gpu_mtl.cuh"
 
+#include "face.h"
+
 namespace Xrender {
 
     struct gpu_face {
@@ -51,7 +53,7 @@ namespace Xrender {
         {
             w = 1.f - (u + v);
             inter.pos = pos + t * dir;
-            inter.triangle = &fa;
+            //inter.triangle = &fa; done by caller with real address
             inter.distance = t;
             inter.normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
             return true;
@@ -73,6 +75,7 @@ namespace Xrender {
                 if (nearest > tmp_inter.distance) {
                     nearest = tmp_inter.distance;
                     inter = tmp_inter;
+                    inter.triangle = &(model[i]);
                 }
             }
         }
@@ -80,6 +83,39 @@ namespace Xrender {
         return hit;
     }
 
+    static __host__ gpu_face make_gpu_face(const Xrender::face &f)
+    {
+        Xrender::gpu_face ret;
+        for (int i = 0; i < 3; i++)
+        {
+            ret.points[i].x = f.points[i].x;
+            ret.points[i].y = f.points[i].y;
+            ret.points[i].z = f.points[i].z;
+        }
+        for (int i = 0; i < 3; i++)
+        {
+            ret.normals[i].x = f.normals[i].x;
+            ret.normals[i].y = f.normals[i].y;
+            ret.normals[i].z = f.normals[i].z;
+        }
+
+        ret.normal.x = f.normal.x;
+        ret.normal.y = f.normal.y;
+        ret.normal.z = f.normal.z;
+
+        if (Xrender::is_source(f.mtl))
+        {
+            ret.mtl = Xrender::gpu_make_source_material();
+        }
+        else
+        {
+            const auto vecf_color = Xrender::material_preview_color(f.mtl);
+            const float3 color = {vecf_color.z, vecf_color.y, vecf_color.x};
+            ret.mtl = Xrender::gpu_make_lambertian_materal(color);
+        }
+
+        return ret;
+    }
 }
 
 #endif
