@@ -44,7 +44,7 @@ namespace Xrender
         unsigned int get_image_width() const noexcept { return 2u * _image_pixel_half_width; }
         unsigned int get_image_height() const noexcept { return 2u * _image_pixel_half_height; }
 
-    private:
+    //private:
         camera(
             unsigned int image_pixel_width,
             unsigned int image_pixel_height,
