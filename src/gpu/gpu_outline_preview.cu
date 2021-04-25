@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <iostream>
 
 #include "gpu_outline_preview.cuh"
 #include "vector_operations.cuh"
@@ -14,33 +15,35 @@ namespace Xrender {
         const gpu_bvh_node *tree,
         const device_camera cam,
         const int sample_count, 
-        float3 *image)
+        float3 *image,
+        const int width)
     {
         //  Get pixel position in image
-        const int x = threadIdx.x;
-        const int y = blockIdx.x;
-        const int width = blockDim.x;
+        const int x = blockIdx.x * blockDim.x + threadIdx.x;
+        const int y = blockIdx.y;
         const int pixel_index = x + y * width;
 
         //  Initialize random generator
-        curandState rand_state;
-        curand_init(1984+pixel_index, 0, 0, &rand_state);
+        if (x < width) {
+            curandState rand_state;
+            curand_init(1984+pixel_index, 0, 0, &rand_state);
 
-        float3 pos;
-        float3 dir;     
-        gpu_intersection inter;
-        float3 estimator = {0.f, 0.f, 0.f};
+            float3 pos;
+            float3 dir;     
+            gpu_intersection inter;
+            float3 estimator = {0.f, 0.f, 0.f};
 
-        for (auto i = 0; i < sample_count; i++) {
-            dir = cam.sample_ray(&rand_state, pos, x, y);     
-            if (gpu_intersect_ray_bvh(tree, pos, dir, inter))
-                estimator += gpu_preview_color(inter.triangle->mtl) * 
-                                fabs(_dot(dir, inter.normal));
-            else
-                estimator += float3{0.f, 0.f, 1.f};
+            for (auto i = 0; i < sample_count; i++) {
+                dir = cam.sample_ray(&rand_state, pos, x, y);     
+                if (gpu_intersect_ray_bvh(tree, pos, dir, inter))
+                    estimator += gpu_preview_color(inter.mtl) * 
+                                    fabs(_dot(dir, inter.normal));
+                else
+                    estimator += float3{0.f, 0.f, 1.f};
+            }
+
+            image[pixel_index] = (1.f / sample_count) * estimator;
         }
-
-        image[pixel_index] = (1.f / sample_count) * estimator;
     }       
     
     __device__ __host__ rgb24 _color_of_float3(const float3& color)
@@ -51,7 +54,11 @@ namespace Xrender {
             static_cast<unsigned char>(color.z * 255.f)};
     }
 
-    std::vector<rgb24> gpu_render_outline_preview(const std::vector<gpu_bvh_node>& tree, const device_camera& cam, std::size_t sample_count)
+    std::vector<rgb24> gpu_render_outline_preview(
+        const std::vector<gpu_bvh_node>& tree,
+        const device_camera& cam,
+        std::size_t sample_count,
+        int gpu_thread_per_block)
     {
         const auto width = cam.get_image_width();
         const auto height = cam.get_image_height();
@@ -69,8 +76,13 @@ namespace Xrender {
 
         CUDA_CHECK(cudaMalloc(&device_image, device_image_size));
 
+        // Split image 
+        auto thread_per_block = std::min<int>(gpu_thread_per_block, width);
+        const auto horizontal_block_count = static_cast<int>(ceilf((float)width / (float)thread_per_block));
+
         const auto start = std::chrono::steady_clock::now();
-        preview_kernel<<<height, width>>>(device_bvh, cam, sample_count, device_image);
+        preview_kernel<<<dim3(horizontal_block_count, height), thread_per_block>>>(
+            device_bvh, cam, sample_count, device_image, width);
         CUDA_CHECK(cudaGetLastError());
         
         // Wait for kernel completion
@@ -78,8 +90,9 @@ namespace Xrender {
 
         const auto end = std::chrono::steady_clock::now();
 
-        printf("GPU computation took %d ms\n", 
-            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
+        std::cout << "GPU internal computation took "
+                  <<  std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
+                  << " ms " << std::endl;
 
         // Allocate host image
         std::vector<float3> output{width * height};

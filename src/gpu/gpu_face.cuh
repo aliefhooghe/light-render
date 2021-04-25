@@ -21,7 +21,7 @@ namespace Xrender {
         float3 pos;
         float3  normal;
         float distance;
-        const gpu_face *triangle;
+        gpu_mtl mtl;
     };
 
     static __device__ bool gpu_intersect_ray_face(const gpu_face& fa, const float3& pos, const float3& dir, gpu_intersection& inter)
@@ -53,7 +53,6 @@ namespace Xrender {
         {
             w = 1.f - (u + v);
             inter.pos = pos + t * dir;
-            //inter.triangle = &fa; done by caller with real address
             inter.distance = t;
             inter.normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
             return true;
@@ -75,7 +74,7 @@ namespace Xrender {
                 if (nearest > tmp_inter.distance) {
                     nearest = tmp_inter.distance;
                     inter = tmp_inter;
-                    inter.triangle = &(model[i]);
+                    inter.mtl = model[i].mtl;
                 }
             }
         }
@@ -107,11 +106,29 @@ namespace Xrender {
         {
             ret.mtl = Xrender::gpu_make_source_material();
         }
-        else
+        else if (std::holds_alternative<lambertian_material>(f.mtl))
         {
-            const auto vecf_color = Xrender::material_preview_color(f.mtl);
-            const float3 color = {vecf_color.z, vecf_color.y, vecf_color.x};
-            ret.mtl = Xrender::gpu_make_lambertian_materal(color);
+            const auto a = std::get<lambertian_material>(f.mtl).absorption;
+            ret.mtl = Xrender::gpu_make_lambertian_materal({a.x, a.y, a.z});
+        }
+        else if (std::holds_alternative<glass_material>(f.mtl))
+        {
+            const auto& glass = std::get<glass_material>(f.mtl);
+            ret.mtl.type = gpu_mtl::GLASS;
+            ret.mtl.glass.tf.x = glass.tf.x;
+            ret.mtl.glass.tf.y = glass.tf.y;
+            ret.mtl.glass.tf.z = glass.tf.z;
+            ret.mtl.glass.ks.x = glass.ks.x;
+            ret.mtl.glass.ks.y = glass.ks.y;
+            ret.mtl.glass.ks.z = glass.ks.z;
+            ret.mtl.glass.reflexivity = glass.reflexivity;
+            ret.mtl.glass.n.x = glass.nr;
+            ret.mtl.glass.n.y = glass.ng;
+            ret.mtl.glass.n.z = glass.nb;
+        }
+        else {
+             // green for unsupported mtls
+            ret.mtl = Xrender::gpu_make_lambertian_materal({0.f, 1.f, 0.});
         }
 
         return ret;

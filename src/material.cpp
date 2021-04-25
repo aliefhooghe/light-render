@@ -91,7 +91,8 @@ namespace Xrender {
                 // choose wavelength
                 switch (rand::integer(0, 2))
                 {
-                    case 0: n = glass.nr; tf = {glass.tf.x, 0.f, 0.f}; break;
+                    // b, g, r
+                    case 0: n = glass.nr; tf = {glass.tf.x, 0.f, 0.}; break;
                     case 1: n = glass.ng; tf = {0.f , glass.tf.y, 0.f}; break;
                     case 2: n = glass.nb; tf = {0.f, 0.f, glass.tf.z}; break;
                 }
@@ -120,17 +121,11 @@ namespace Xrender {
                     edir = ratio * idir + (ratio * c - sqrtf(tmp)) * norm;
                     return 3.f * tf;
                 }
-                else // total reflection
-                {
-                    edir = idir - 2.f * dot(normal, idir) * normal;
-                    return  3.f * glass.ks;
-                }
+                //else // total reflection
             }
-            else
-            {
-                edir = idir - 2.f * dot(normal, idir) * normal;
-                return glass.ks;
-            }
+            
+            edir = idir - 2.f * dot(normal, idir) * normal;
+            return glass.ks;
         }
     };
 

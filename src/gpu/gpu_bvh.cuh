@@ -81,7 +81,7 @@ namespace Xrender {
                 {
                     neareset = tmp.distance;
                     inter = tmp;
-                    inter.triangle = &(tree[node_id].leaf); // retrieve real leaf address
+                    inter.mtl = node.leaf.mtl;
                     hit = true;
                 }
             }

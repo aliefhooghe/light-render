@@ -49,18 +49,18 @@ namespace Xrender {
 
             if (gpu_intersect_ray_bvh(bvh, pos, dir, inter))
             {    
-                const auto mtl = inter.triangle->mtl;
-                brdf_coeff *= gpu_preview_color(mtl);
+                float3 next_dir;
+                brdf_coeff *= gpu_brdf(state, inter.mtl, inter.normal, dir, next_dir);
 
-                if (gpu_mtl_is_source(mtl))
+                if (gpu_mtl_is_source(inter.mtl))
                 {
                     return geo_coeff * brdf_coeff;
                 }
                 else
                 {
+                    geo_coeff *= fabs(_dot(next_dir, inter.normal));
                     pos = inter.pos;
-                    dir = rand_unit_hemisphere_uniform(state, inter.normal);
-                    geo_coeff *= fabs(_dot(dir, inter.normal));
+                    dir = next_dir;
                 }
             }
             else
@@ -76,34 +76,37 @@ namespace Xrender {
         const gpu_bvh_node *bvh,
         const device_camera cam,
         const int sample_count, 
-        float3 *image)
+        float3 *image,
+        const int width)
     {
         //  Get pixel position in image
-        const int x = threadIdx.x;
-        const int y = blockIdx.x;
-        const int width = blockDim.x;
+        const int x = blockIdx.x * blockDim.x + threadIdx.x;
+        const int y = blockIdx.y;
         const int pixel_index = x + y * width;
 
-        //  Initialize random generator
-        curandState rand_state;
-        curand_init(pixel_index, x, y, &rand_state);
+        if (x < width) { 
+            //  Initialize random generator
+            curandState rand_state;
+            curand_init(pixel_index, x, y, &rand_state);
 
-        float3 pos;
-        float3 dir;
-        float3 estimator = {0.f, 0.f, 0.f};
+            float3 pos;
+            float3 dir;
+            float3 estimator = {0.f, 0.f, 0.f};
 
-        for(auto i = 0; i < sample_count; i++) {
-            dir = cam.sample_ray(&rand_state, pos, x, y);
-            estimator += gpu_sample_path(bvh, pos, dir, &rand_state);
+            for(auto i = 0; i < sample_count; i++) {
+                dir = cam.sample_ray(&rand_state, pos, x, y);
+                estimator += gpu_sample_path(bvh, pos, dir, &rand_state);
+            }
+
+            image[pixel_index] = (3.f / sample_count) * estimator;
         }
-
-        image[pixel_index] = (3.f / sample_count) * estimator;
     }
 
     std::vector<float3> gpu_naive_mc(
         const std::vector<gpu_bvh_node>& tree,
         const device_camera& cam,
-        const int sample_per_pixel)
+        const int sample_per_pixel,
+        int gpu_thread_per_block)
     {
         const auto width = cam.get_image_width();
         const auto height = cam.get_image_height();
@@ -123,9 +126,11 @@ namespace Xrender {
         CUDA_CHECK(cudaMemcpy(device_bvh, tree.data(), device_bvh_size, cudaMemcpyHostToDevice));
 
         //  Do the computations
-
+        auto thread_per_block = std::min<int>(gpu_thread_per_block, width);
+        const auto horizontal_block_count = static_cast<int>(ceilf((float)width / (float)thread_per_block));
         const auto start = std::chrono::steady_clock::now();
-        path_sampler_kernel<<<height, width>>>(device_bvh, cam, sample_per_pixel, device_image);
+        path_sampler_kernel<<<dim3(horizontal_block_count, height), thread_per_block>>>(
+            device_bvh, cam, sample_per_pixel, device_image, width);
         CUDA_CHECK(cudaGetLastError());
         
         // Wait for kernel completion

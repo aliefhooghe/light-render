@@ -32,17 +32,6 @@ auto make_device_cam(const Xrender::camera& cam)
     return device_cam;
 }
 
-auto make_device_model(const std::vector<Xrender::face>& model)
-{
-    std::vector<Xrender::gpu_face> device_model(model.size());
-    
-    std::transform(
-        model.begin(), model.end(), device_model.begin(),
-        Xrender::make_gpu_face);
-
-    return device_model;
-}
-
 void write_bitmap(std::vector<Xrender::vecf> rendered_sensor, const std::string& path, size_t width, size_t height)
 {
     std::vector<Xrender::rgb24> rendered_bitmap(width * height);
@@ -58,9 +47,9 @@ void write_bitmap(std::vector<Xrender::vecf> rendered_sensor, const std::string&
 __device__ __host__ Xrender::rgb24 rgb24_of_float3(const float3& color)
 {
     return {
-        static_cast<unsigned char>(color.x * 255.f),
+        static_cast<unsigned char>(color.z * 255.f),
         static_cast<unsigned char>(color.y * 255.f),
-        static_cast<unsigned char>(color.z * 255.f)};
+        static_cast<unsigned char>(color.x * 255.f)};
 }
 
 void write_bitmap(std::vector<float3> rendered_sensor, const std::string& path, size_t width, size_t height)
@@ -83,22 +72,27 @@ void write_bitmap(std::vector<float3> rendered_sensor, const std::string& path, 
 
 int main()
 {
+    std::cout << "Loading OBJ" << std::endl;
     auto model = Xrender::wavefront_obj_load("../../untitled.obj");
-    auto device_model = make_device_model(model);
-
+    std::cout << "Building tree" << std::endl;
     const Xrender::bvh_tree tree{model};
     const auto gpu_tree = Xrender::make_gpu_bvh(tree);
 
     std::cout << "Bvh max depth is " << tree.depth() << std::endl;
 
-    const auto width = 36 * 20;
-    const auto height = 24 * 20;
+    const auto size_factor = 40;
+    const auto width = 36 * size_factor;
+    const auto height = 24 * size_factor;
 
-    const auto preview_sample_count = 128;
+    constexpr auto gpu_thread_per_block = 32;
+
+    std::cout << "Output image size = " << width << "x" << height << std::endl;
+
+    const auto preview_sample_count = 1;
     const auto render_sample_count = 128;
 
     // Init camera
-    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 10E-3, 50E-3, 3.f);
+    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 0.1E-3, 50E-3, 3.f);
     auto device_camera = make_device_cam(camera);
 
     std::chrono::steady_clock::time_point start, end;
@@ -121,7 +115,7 @@ int main()
 #if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // GPU PREVIEW
     start = std::chrono::steady_clock::now();
-    const auto gpu_review = Xrender::gpu_render_outline_preview(gpu_tree, device_camera, preview_sample_count);
+    const auto gpu_review = Xrender::gpu_render_outline_preview(gpu_tree, device_camera, preview_sample_count, gpu_thread_per_block);
     end = std::chrono::steady_clock::now();
 
     const auto gpu_preview_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -153,7 +147,7 @@ int main()
 #if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_RENDER)
     //GPU RENDER
     start = std::chrono::steady_clock::now();
-    auto gpu_rendered_sensor = Xrender::gpu_naive_mc(gpu_tree, device_camera, render_sample_count);
+    auto gpu_rendered_sensor = Xrender::gpu_naive_mc(gpu_tree, device_camera, render_sample_count, gpu_thread_per_block);
     end = std::chrono::steady_clock::now();
     
     const auto gpu_render_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();

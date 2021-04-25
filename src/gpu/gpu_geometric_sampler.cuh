@@ -11,7 +11,8 @@ namespace Xrender {
     std::vector<float3> gpu_naive_mc(
         const std::vector<gpu_bvh_node>& tree,
         const device_camera& camera,
-        const int sample_per_pixel = 1);
+        const int sample_per_pixel,
+        int thread_per_block);
 
 }
 
