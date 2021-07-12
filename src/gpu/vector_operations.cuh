@@ -61,7 +61,7 @@ namespace Xrender {
 
     static __device__ __host__ __forceinline__ float _dot(const float3& a, const float3& b)
     {
-        return a.x * b.x + a.y*b.y + a.z*b.z;
+        return a.x * b.x + a.y * b.y + a.z * b.z;
     }
 
     static __device__ __host__ __forceinline__ float _norm2(const float3& a)

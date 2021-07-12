@@ -20,7 +20,7 @@ namespace Xrender {
         {
             u1 = rand_uniform(state, -1.0f, 1.0f);
             u2 = rand_uniform(state, -1.0f, 1.0f);
-        } while ((s = (u1 * u1 + u2* u2)) >= 1.0f);
+        } while ((s = (u1 * u1 + u2 * u2)) >= 1.0f);
 
         float tmp = 2.0f * sqrtf(1.0f - s);
 
@@ -32,7 +32,7 @@ namespace Xrender {
     static __device__ float3 rand_unit_hemisphere_uniform(curandState *state, const float3& normal)
     {
         const float3 ret = rand_unit_sphere_uniform(state);
-        return _dot(ret, normal) > 0.0f ? ret : -ret;
+        return _dot(ret, normal) >= 0.0f ? ret : -ret;
     }
 
     static __device__ float2 rand_unit_disc_uniform(curandState *state)

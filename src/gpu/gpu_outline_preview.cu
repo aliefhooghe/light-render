@@ -49,9 +49,9 @@ namespace Xrender {
     __device__ __host__ rgb24 _color_of_float3(const float3& color)
     {
         return {
-            static_cast<unsigned char>(color.x * 255.f),
+            static_cast<unsigned char>(color.z * 255.f),
             static_cast<unsigned char>(color.y * 255.f),
-            static_cast<unsigned char>(color.z * 255.f)};
+            static_cast<unsigned char>(color.x * 255.f)};
     }
 
     std::vector<rgb24> gpu_render_outline_preview(

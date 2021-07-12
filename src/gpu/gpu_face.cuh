@@ -36,12 +36,12 @@ namespace Xrender {
         edge2 = vertex2 - vertex0;
         h = _cross(dir, edge2);
         a = _dot(edge1, h);
-        if (a > -EPSILON && a < EPSILON)
+        if (fabs(a) < EPSILON)
             return false;    // This ray is parallel to this triangle.
         f = 1.0f / a;
-        s = pos - vertex0;
+        s = pos + EPSILON * dir - vertex0;
         u = f * _dot(s, h);
-        if (u < 0.0 || u > 1.f)
+        if (u < 0.f || u > 1.f)
             return false;
         q = _cross(s, edge1);
         v = f * _dot(dir, q);

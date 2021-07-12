@@ -68,22 +68,46 @@ namespace Xrender {
 
     static __device__ float3 gpu_glass_brdf(curandState *state, const glass_mtl& glass, const float3& normal, const float3& idir, float3& edir)
     {
-        if (curand_uniform(state) >= glass.reflexivity) {
-            // try transmition
-            float n;
-            float3 tf;
+        const auto wavelentgth_idx = (curand(state) % 3u);
+        const auto dot_dir_norm = _dot(idir, normal);
+        const auto cos_theta = fabs(dot_dir_norm);
 
-            switch (curand(state) % 3u)
-            {
-                case 0: n = glass.n.x; tf = {glass.tf.x, 0.f, 0.f}; break;
-                case 1: n = glass.n.y; tf = {0.f, glass.tf.y, 0.f}; break;
-                case 2: n = glass.n.z; tf = {0.f, 0.f, glass.tf.z}; break;
-            }
+        float n;
+        float3 tf;
+        float3 ks;
 
+        // choose wavelength
+        switch (wavelentgth_idx)
+        {
+        case 0:
+            n = glass.n.x;
+            tf = {glass.tf.x, 0.f, 0.f};
+            ks = {glass.ks.x, 0.f, 0.f};
+            break;
+        case 1:
+            n = glass.n.y;
+            tf = {0.f, glass.tf.y, 0.f};
+            ks = {0.f, glass.ks.y, 0.f};
+            break;
+        case 2:
+            n = glass.n.z;
+            tf = {0.f, 0.f, glass.tf.z};
+            ks = {0.f, 0.f, glass.ks.z};
+            break;
+        }
+
+        const auto tmp = (1.f - n) / (1.f + n);
+        const auto r0 = tmp * tmp;
+        const auto factor = 1.f - cos_theta;
+        const auto factor2 = factor * factor;
+        const float factor5 = factor2 * factor2 * factor;
+
+        const float r = r0 + (1.f - r0) * factor5;
+
+        if (curand_uniform(state) >= r)
+        {
             float ratio;
             float3 norm;
-
-            const auto dot_dir_norm = _dot(idir, normal);
 
             if (dot_dir_norm < 0.f)
             {
@@ -96,20 +120,18 @@ namespace Xrender {
                 norm = -normal;
             }
 
-            const auto c = fabs(dot_dir_norm);
-            const auto tmp = 1.f - (ratio * ratio) * (1.f - c * c);
+            const auto tmp = 1.f - (ratio * ratio) * (1.f - cos_theta * cos_theta);
 
-            if (tmp > 0.f)
+            if (tmp >= 0.f)
             {
-                edir = ratio * idir + (ratio * c - sqrtf(tmp)) * norm;
+                edir = ratio * idir + (ratio * cos_theta - sqrtf(tmp)) * norm;
                 return 3.f * tf;
             }
-            // else total relfection
+            // else : total reflection
         }
 
-        // total reflection
         edir = idir - 2.f * _dot(normal, idir) * normal;
-        return glass.ks;
+        return 3.f * ks;
     }
 
     static __device__ float3 gpu_brdf(

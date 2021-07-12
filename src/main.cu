@@ -44,12 +44,12 @@ void write_bitmap(std::vector<Xrender::vecf> rendered_sensor, const std::string&
     Xrender::bitmap_write(path, rendered_bitmap, width, height);
 }
 
-__device__ __host__ Xrender::rgb24 rgb24_of_float3(const float3& color)
+Xrender::rgb24 rgb24_of_float3(const float3& color)
 {
     return {
-        static_cast<unsigned char>(color.z * 255.f),
-        static_cast<unsigned char>(color.y * 255.f),
-        static_cast<unsigned char>(color.x * 255.f)};
+        static_cast<unsigned char>(std::clamp(color.z, 0.f, 1.f) * 255.f),
+        static_cast<unsigned char>(std::clamp(color.y, 0.f, 1.f) * 255.f),
+        static_cast<unsigned char>(std::clamp(color.x, 0.f, 1.f) * 255.f)};
 }
 
 void write_bitmap(std::vector<float3> rendered_sensor, const std::string& path, size_t width, size_t height)
@@ -65,37 +65,50 @@ void write_bitmap(std::vector<float3> rendered_sensor, const std::string& path, 
 
 // --
 
-#define ENABLE_CPU_COMPUTE
+//#define ENABLE_CPU_COMPUTE
 #define ENABLE_GPU_COMPUTE
 #define ENABLE_PREVIEW
 #define ENABLE_RENDER
 
 int main()
 {
+    std::chrono::steady_clock::time_point start, end;
+
     std::cout << "Loading OBJ" << std::endl;
+    start = std::chrono::steady_clock::now();
     auto model = Xrender::wavefront_obj_load("../../untitled.obj");
-    std::cout << "Building tree" << std::endl;
+    end = std::chrono::steady_clock::now();
+
+    const auto model_load_duration = 
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
+    std::cout << "Model loaded in " << model_load_duration << " ms\nBuilding tree" << std::endl;
+    start = std::chrono::steady_clock::now();
     const Xrender::bvh_tree tree{model};
+    end = std::chrono::steady_clock::now();
+
+    const auto tree_build_duration = 
+        std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+
     const auto gpu_tree = Xrender::make_gpu_bvh(tree);
 
-    std::cout << "Bvh max depth is " << tree.depth() << std::endl;
+    std::cout << "Bvh built in " << tree_build_duration << " ms, max depth is " << tree.depth() << std::endl;
 
     const auto size_factor = 40;
-    const auto width = 36 * size_factor;
-    const auto height = 24 * size_factor;
+    const auto width = 24 * size_factor;
+    const auto height = 36 * size_factor;
 
-    constexpr auto gpu_thread_per_block = 32;
+    constexpr auto gpu_thread_per_block = 256;
 
     std::cout << "Output image size = " << width << "x" << height << std::endl;
 
-    const auto preview_sample_count = 1;
-    const auto render_sample_count = 128;
-
+    const auto preview_sample_count = 128;
+    const auto render_sample_count = 8000;
     // Init camera
-    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 0.1E-3, 50E-3, 3.f);
+    auto camera = Xrender::camera::from_focus_distance(width, height, 24E-3f, 36E-3f, 2E-3, 240E-3, 6.15f);
     auto device_camera = make_device_cam(camera);
 
-    std::chrono::steady_clock::time_point start, end;
+    
 
 #if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // CPU PREVIEW
@@ -110,7 +123,7 @@ int main()
 
     std::cout   << "Rendered cpu Preview in " 
                 << cpu_preview_duration
-                << " ms; Start gpu preview " << std::endl;
+                << " ms" << std::endl;
 #endif
 #if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // GPU PREVIEW
@@ -126,7 +139,7 @@ int main()
 
     Xrender::bitmap_write("preview-gpu.bmp", gpu_review, width, height);
 
-    std::cout << "Rendered Preview.\nRendering lights on cpu" << std::endl;
+    std::cout << "Rendered Preview." << std::endl;
 #endif
 #if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_RENDER)
     //  CPU RENDER
@@ -142,7 +155,7 @@ int main()
 
     write_bitmap(rendered_sensor, "render-cpu.bmp", width, height);
 
-    std::cout << "Rendered light on cpu.\nRendering lights on gpu" << std::endl;
+    std::cout << "Rendered light on cpu." << std::endl;
 #endif
 #if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_RENDER)
     //GPU RENDER
@@ -163,7 +176,8 @@ int main()
 #endif
 
     std::cout << "\nSummary :\n" <<
-
+                "  Model load : " << model_load_duration << " ms\n"
+                "  BVH build  : " << tree_build_duration << " ms\n"
 #ifdef ENABLE_PREVIEW  
                 "  Preview : \n"
 #ifdef ENABLE_CPU_COMPUTE

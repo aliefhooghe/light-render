@@ -18,19 +18,14 @@ namespace Xrender
         constexpr auto b = max_prob - a;
 
         const auto estimator_norm = estimator_geometric_coeff * estimator_brdf_coeff.norm();
-
-        if (estimator_norm < threshold)
-            return min_prob;
-        else
-            return std::clamp(a * estimator_norm + b, 0.f, 1.f);
-
+        const float prob = a * estimator_norm + b;
+        return prob > 1.f ? 1.f : prob;
     }
 
     vecf path_sample_geometric(
         const bvh_tree &tree,
         const vecf &start_pos,
-        const vecf &start_dir,
-        std::size_t max_bounce)
+        const vecf &start_dir)
     {
         intersection inter;
         vecf pos = start_pos;
@@ -38,7 +33,7 @@ namespace Xrender
         vecf estimator_brdf_coeff = {1.f, 1.f, 1.f};
         float estimator_geometric_coeff = start_dir.y;
 
-        for (auto i = 0u; i < max_bounce; )
+        for (;;)
         {
             const auto prob = test_prob(estimator_geometric_coeff, estimator_brdf_coeff);
 
@@ -81,8 +76,7 @@ namespace Xrender
     std::vector<vecf> mc_naive(
         const bvh_tree &tree,
         const camera &cam,
-        std::size_t sample_pp_count,
-        std::size_t max_bounce)
+        std::size_t sample_pp_count)
     {
         const auto width = cam.get_image_width();
         const auto height = cam.get_image_height();
@@ -104,10 +98,10 @@ namespace Xrender
                 for (auto i = 0; i < sample_pp_count; ++i)
                 {
                     cam.sample_ray(w, h, pos, dir);
-                    pixel_estimator += path_sample_geometric(tree, pos, dir, max_bounce);
+                    pixel_estimator += path_sample_geometric(tree, pos, dir);
                 }
 
-                view(w, h) = 3.f * (pixel_estimator / static_cast<float>(sample_pp_count));
+                view(w, h) = 3.f * pixel_estimator / static_cast<float>(sample_pp_count);
             }
         }
 

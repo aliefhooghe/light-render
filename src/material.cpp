@@ -80,7 +80,7 @@ namespace Xrender {
         {
             const auto seed = rand::uniform();
 
-            // // if choose tranmition
+            // if choose tranmition
             if (seed >= glass.reflexivity)
             {
                 float n;
@@ -91,7 +91,6 @@ namespace Xrender {
                 // choose wavelength
                 switch (rand::integer(0, 2))
                 {
-                    // b, g, r
                     case 0: n = glass.nr; tf = {glass.tf.x, 0.f, 0.}; break;
                     case 1: n = glass.ng; tf = {0.f , glass.tf.y, 0.f}; break;
                     case 2: n = glass.nb; tf = {0.f, 0.f, glass.tf.z}; break;
@@ -100,7 +99,7 @@ namespace Xrender {
                 //
                 const auto dot_dir_norm = dot(idir, normal);
 
-                if ( dot_dir_norm < 0.f)
+                if (dot_dir_norm < 0.f)
                 {
                     ratio = 1.f / n;
                     norm = normal;

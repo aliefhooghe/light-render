@@ -10,7 +10,7 @@
 
 namespace Xrender {
 
-    __device__ __forceinline__ float russian_roulette_prob(float geo_coeff, const float3& brdf_coeff)
+    __device__ float russian_roulette_prob(float geo_coeff, const float3& brdf_coeff)
     {
         constexpr auto threshold = 10.f / 255.f;
         constexpr auto min_prob = 0.2f;
@@ -22,56 +22,7 @@ namespace Xrender {
         const float prob = a * estimator_norm + b;
         return prob > 1.f ? 1.f : prob;
     }    
-
-    __device__ __forceinline__ float3 gpu_sample_path(
-        const gpu_bvh_node *bvh,
-        const float3& start_pos, const float3& start_dir, 
-        curandState *state)
-    {
-        gpu_intersection inter;
-        float3 pos = start_pos;
-        float3 dir = start_dir;
-        float3 brdf_coeff = {1.f, 1.f, 1.f};
-        float geo_coeff = start_dir.y;
-
-        for (;;)
-        {
-            const float prob = russian_roulette_prob(geo_coeff, brdf_coeff);
-
-            if (curand_uniform(state) <= prob)
-            {
-                geo_coeff /= prob;
-            }
-            else
-            {
-                break;
-            }
-
-            if (gpu_intersect_ray_bvh(bvh, pos, dir, inter))
-            {    
-                float3 next_dir;
-                brdf_coeff *= gpu_brdf(state, inter.mtl, inter.normal, dir, next_dir);
-
-                if (gpu_mtl_is_source(inter.mtl))
-                {
-                    return geo_coeff * brdf_coeff;
-                }
-                else
-                {
-                    geo_coeff *= fabs(_dot(next_dir, inter.normal));
-                    pos = inter.pos;
-                    dir = next_dir;
-                }
-            }
-            else
-            {
-                break;
-            }
-        }
-
-        return {0.f, 0.f, 0.f};
-    }
-
+    
     __global__ void path_sampler_kernel(
         const gpu_bvh_node *bvh,
         const device_camera cam,
@@ -84,21 +35,63 @@ namespace Xrender {
         const int y = blockIdx.y;
         const int pixel_index = x + y * width;
 
-        if (x < width) { 
-            //  Initialize random generator
+        if (x < width)
+        { 
+            int sample_counter = 0;
+            gpu_intersection inter;
             curandState rand_state;
-            curand_init(pixel_index, x, y, &rand_state);
-
+            float3 estimator = {0.f, 0.f, 0.f};
             float3 pos;
             float3 dir;
-            float3 estimator = {0.f, 0.f, 0.f};
+            float3 brdf_coeff;
+            float  geo_coeff;
 
-            for(auto i = 0; i < sample_count; i++) {
+            //  Initialize random generator
+            curand_init(pixel_index, x*pixel_index+1, pixel_index+y, &rand_state);
+            
+            //  Initialize first ray
+            dir = cam.sample_ray(&rand_state, pos, x, y);
+            geo_coeff = dir.y;
+            brdf_coeff = {1.f, 1.f, 1.f};
+
+            while (sample_counter < sample_count)
+            {
+                // Russion roulette : does current ray worht the cost ?
+                const float roulette_prob = russian_roulette_prob(geo_coeff, brdf_coeff);
+                if (curand_uniform(&rand_state) <= roulette_prob)
+                {
+                    // keep the ray
+                    geo_coeff /= roulette_prob;
+                
+                    //  cast a ray
+                    if (gpu_intersect_ray_bvh(bvh, pos, dir, inter))
+                    {
+                        float3 next_dir;
+                        brdf_coeff *= gpu_brdf(&rand_state, inter.mtl, inter.normal, dir, next_dir);
+
+                        if (gpu_mtl_is_source(inter.mtl))
+                        {
+                            // record ray contribution
+                            estimator += (geo_coeff * brdf_coeff);
+                        }
+                        else
+                        {
+                            geo_coeff *= fabs(_dot(next_dir, inter.normal));
+                            pos = inter.pos;
+                            dir = next_dir;
+                            continue;
+                        }
+                    }
+                }
+                    
+                // start a new ray
+                sample_counter++;
                 dir = cam.sample_ray(&rand_state, pos, x, y);
-                estimator += gpu_sample_path(bvh, pos, dir, &rand_state);
+                geo_coeff = dir.y;
+                brdf_coeff = {1.f, 1.f, 1.f};
             }
 
-            image[pixel_index] = (3.f / sample_count) * estimator;
+            image[pixel_index] = estimator * (3.f / sample_count);
         }
     }
 
