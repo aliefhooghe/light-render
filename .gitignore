@@ -1,7 +1,9 @@
-/build/*
+build
 workspace.code-workspace
-/.vscode
+.vscode
 *.bmp
 *.obj
 *.mtl
 *.blend*
+Models
+Results
