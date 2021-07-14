@@ -7,6 +7,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
+#include "host/camera_handling/camera_configuration.cuh"
+
 #include "renderer_display.cuh"
 
 namespace Xrender
@@ -108,8 +110,8 @@ namespace Xrender
         case SDLK_PAGEUP:   _next_renderer(); break;
         case SDLK_PAGEDOWN: _next_renderer(true); break;
         case SDLK_SPACE:    _reset_current_renderer(); break;
-        case SDLK_UP:       _update_parameter(_camera._focal_length, true); break;
-        case SDLK_DOWN:     _update_parameter(_camera._focal_length, false); break;
+        case SDLK_UP:       camera_update_focal_length(_camera, _camera._focal_length * 1.1); _reset_current_renderer(); break;
+        case SDLK_DOWN:     camera_update_focal_length(_camera, _camera._focal_length / 1.1); _reset_current_renderer(); break;
         case SDLK_ESCAPE:   _switch_fast_mode(); break;
         }
     }
