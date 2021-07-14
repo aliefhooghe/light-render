@@ -1,14 +1,37 @@
 
+#include <algorithm>
 #include <chrono>
-#include <curand_kernel.h>
-
 #include <iostream>
 
 #include "gpu_geometric_sampler.cuh"
-#include "rand_operations.cuh"
+#include "vector_operations.cuh"
 #include "cuda_exception.cuh"
+#include "rand_operations.cuh"
+#include "utils/image_grid_dim.cuh"
 
 namespace Xrender {
+
+    __global__ void render_develop_to_surface_kernel(
+        const float3 *sensor, cudaSurfaceObject_t surface, float factor, const int width)
+    {
+        //  Get pixel position in image
+        const int x = blockIdx.x * blockDim.x + threadIdx.x;
+        const int y = blockIdx.y;
+
+        if (x < width) {
+            const int pixel_index = x + y * width;
+
+            const auto rgb_value = sensor[pixel_index] * factor;
+            const float4 rgba_value = {
+                rgb_value.x,
+                rgb_value.y,
+                rgb_value.z,
+                1.f
+            };
+
+            surf2Dwrite(rgba_value, surface, x * sizeof(float4), y);
+        }
+    }
 
     __device__ float russian_roulette_prob(float geo_coeff, const float3& brdf_coeff)
     {
@@ -21,34 +44,33 @@ namespace Xrender {
         const auto estimator_norm = geo_coeff * _norm(brdf_coeff);
         const float prob = a * estimator_norm + b;
         return prob > 1.f ? 1.f : prob;
-    }    
-    
+    }
+
     __global__ void path_sampler_kernel(
         const gpu_bvh_node *bvh,
         const device_camera cam,
-        const int sample_count, 
-        float3 *image,
-        const int width)
+        const int sample_count,
+        curandState_t *rand_pool,
+        float3 *sensor)
     {
+        const auto width = cam.get_image_width();
+
         //  Get pixel position in image
         const int x = blockIdx.x * blockDim.x + threadIdx.x;
         const int y = blockIdx.y;
         const int pixel_index = x + y * width;
 
         if (x < width)
-        { 
+        {
             int sample_counter = 0;
             gpu_intersection inter;
-            curandState rand_state;
+            auto rand_state = rand_pool[pixel_index];
             float3 estimator = {0.f, 0.f, 0.f};
             float3 pos;
             float3 dir;
             float3 brdf_coeff;
             float  geo_coeff;
 
-            //  Initialize random generator
-            curand_init(pixel_index, x*pixel_index+1, pixel_index+y, &rand_state);
-            
             //  Initialize first ray
             dir = cam.sample_ray(&rand_state, pos, x, y);
             geo_coeff = dir.y;
@@ -62,7 +84,7 @@ namespace Xrender {
                 {
                     // keep the ray
                     geo_coeff /= roulette_prob;
-                
+
                     //  cast a ray
                     if (gpu_intersect_ray_bvh(bvh, pos, dir, inter))
                     {
@@ -83,7 +105,7 @@ namespace Xrender {
                         }
                     }
                 }
-                    
+
                 // start a new ray
                 sample_counter++;
                 dir = cam.sample_ray(&rand_state, pos, x, y);
@@ -91,58 +113,29 @@ namespace Xrender {
                 brdf_coeff = {1.f, 1.f, 1.f};
             }
 
-            image[pixel_index] = estimator * (3.f / sample_count);
+            sensor[pixel_index] += estimator;
+            rand_pool[pixel_index] = rand_state;
         }
     }
 
-    std::vector<float3> gpu_naive_mc(
-        const std::vector<gpu_bvh_node>& tree,
-        const device_camera& cam,
-        const int sample_per_pixel,
-        int gpu_thread_per_block)
+    gpu_geometric_sampler::gpu_geometric_sampler(
+            const gpu_bvh_node *device_tree,
+            device_camera& cam)
+    :   gpu_renderer{cam},
+        _device_tree{device_tree}
     {
-        const auto width = cam.get_image_width();
-        const auto height = cam.get_image_height();
-        const auto device_image_size = width * height * sizeof(float3);
-        const auto device_bvh_size = tree.size() * sizeof(gpu_bvh_node);
-
-        float3 *device_image = nullptr;
-        gpu_bvh_node *device_bvh = nullptr;
-
-        std::cout << "@GPU RENDER " << sample_per_pixel << "SPP" << std::endl;
-
-        //  Allocate memory on device for image and model
-        CUDA_CHECK(cudaMalloc(&device_image, device_image_size));
-        CUDA_CHECK(cudaMalloc(&device_bvh, device_bvh_size));
-
-        //  Copy model to the device
-        CUDA_CHECK(cudaMemcpy(device_bvh, tree.data(), device_bvh_size, cudaMemcpyHostToDevice));
-
-        //  Do the computations
-        auto thread_per_block = std::min<int>(gpu_thread_per_block, width);
-        const auto horizontal_block_count = static_cast<int>(ceilf((float)width / (float)thread_per_block));
-        const auto start = std::chrono::steady_clock::now();
-        path_sampler_kernel<<<dim3(horizontal_block_count, height), thread_per_block>>>(
-            device_bvh, cam, sample_per_pixel, device_image, width);
-        CUDA_CHECK(cudaGetLastError());
-        
-        // Wait for kernel completion
-        CUDA_CHECK(cudaDeviceSynchronize());
-
-        const auto end = std::chrono::steady_clock::now();
-
-        std::cout << "GPU render took " 
-                  << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count()
-                  << " ms " << std::endl;
-
-        //  Retrieve result
-        std::vector<float3> result{width * height};
-        CUDA_CHECK(cudaMemcpy(result.data(), device_image, device_image_size, cudaMemcpyDeviceToHost));
-
-        CUDA_CHECK(cudaFree(device_image));
-        CUDA_CHECK(cudaFree(device_bvh));
-
-        return result;
     }
 
+    __host__ void gpu_geometric_sampler::_call_integrate_kernel(std::size_t sample_count, curandState_t *rand_pool, float3 *sensor)
+    {
+        path_sampler_kernel<<<_image_grid_dim(), _image_thread_per_block()>>>(
+            _device_tree, _camera, sample_count, rand_pool, sensor);
+    }
+
+    __host__ void gpu_geometric_sampler::_call_develop_to_texture_kernel(const float3 *sensor, cudaSurfaceObject_t texture)
+    {
+        const auto factor = 3.f / _sensor_total_sample_count();
+        render_develop_to_surface_kernel<<<_image_grid_dim(), _image_thread_per_block()>>>(
+            sensor, texture, factor, _camera.get_image_width());
+    }
 }

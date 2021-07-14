@@ -30,6 +30,8 @@ namespace Xrender {
             lambertian_mtl lambertian;
             glass_mtl glass;
         };
+
+        /** \todo + preview_color(), + brdf(), ...**/
     };
 
     // Onmy lambertian / sources
@@ -144,7 +146,7 @@ namespace Xrender {
         {
         case gpu_mtl::SOURCE:       return gpu_source_brdf(mtl.source);
         case gpu_mtl::LAMBERTIAN :  return gpu_lambertian_brdf(state, mtl.lambertian, normal, edir);
-        default: /* GLASS */        return gpu_glass_brdf(state, mtl.glass, normal, idir, edir); 
+        default: /* GLASS */        return gpu_glass_brdf(state, mtl.glass, normal, idir, edir);
         }
     }
 

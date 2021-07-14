@@ -14,7 +14,7 @@ namespace Xrender {
             const float signed_py = (py - _image_pixel_half_height) + curand_uniform(state);
 
             // Compute the pixel origin position on the sensor
-            const float3 pixel_origin = 
+            const float3 pixel_origin =
             {
                 -signed_px * _pixel_size,
                 -_sensor_lens_distance,
@@ -23,16 +23,16 @@ namespace Xrender {
 
             pos = _sample_lens_point(state);
 
-            return _normalized((_focal_length / _sensor_lens_distance - 1.f) * pos - 
+            return _normalized((_focal_length / _sensor_lens_distance - 1.f) * pos -
                               (_focal_length / _sensor_lens_distance) * pixel_origin);
         }
-    
+
         __device__ float3 _sample_lens_point(curandState *state) const
         {
             const float2 pos2d = rand_unit_disc_uniform(state);
             return _diaphragm_radius * float3{pos2d.x, 0.f, pos2d.y};
         }
-        
+
 
         __device__ __host__ std::size_t get_image_width() const
         {

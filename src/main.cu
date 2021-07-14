@@ -13,12 +13,10 @@
 #include "geometric_sampler.h"
 #include "gpu/gpu_geometric_sampler.cuh"
 
-// ---
-
 // gpu adapter
 
 
-auto make_device_cam(const Xrender::camera& cam)
+static auto make_device_cam(const Xrender::camera& cam)
 {
     Xrender::device_camera device_cam;
 
@@ -79,7 +77,7 @@ int main()
     auto model = Xrender::wavefront_obj_load("../../untitled.obj");
     end = std::chrono::steady_clock::now();
 
-    const auto model_load_duration = 
+    const auto model_load_duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     std::cout << "Model loaded in " << model_load_duration << " ms\nBuilding tree" << std::endl;
@@ -87,7 +85,7 @@ int main()
     const Xrender::bvh_tree tree{model};
     end = std::chrono::steady_clock::now();
 
-    const auto tree_build_duration = 
+    const auto tree_build_duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     const auto gpu_tree = Xrender::make_gpu_bvh(tree);
@@ -95,20 +93,18 @@ int main()
     std::cout << "Bvh built in " << tree_build_duration << " ms, max depth is " << tree.depth() << std::endl;
 
     const auto size_factor = 40;
-    const auto width = 24 * size_factor;
-    const auto height = 36 * size_factor;
-
-    constexpr auto gpu_thread_per_block = 256;
+    const auto width = 36 * size_factor;
+    const auto height = 24 * size_factor;
 
     std::cout << "Output image size = " << width << "x" << height << std::endl;
 
     const auto preview_sample_count = 128;
-    const auto render_sample_count = 8000;
+    const auto render_sample_count = 42000;
     // Init camera
-    auto camera = Xrender::camera::from_focus_distance(width, height, 24E-3f, 36E-3f, 2E-3, 240E-3, 6.15f);
+    auto camera = Xrender::camera::from_focus_distance(width, height, 36E-3f, 24E-3f, 80E-3, 300E-3, 8.f);
     auto device_camera = make_device_cam(camera);
 
-    
+
 
 #if defined(ENABLE_CPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // CPU PREVIEW
@@ -117,23 +113,27 @@ int main()
     end = std::chrono::steady_clock::now();
 
     Xrender::bitmap_write("preview-cpu.bmp", preview, width, height);
-    
-    const auto cpu_preview_duration = 
+
+    const auto cpu_preview_duration =
         std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::cout   << "Rendered cpu Preview in " 
+    std::cout   << "Rendered cpu Preview in "
                 << cpu_preview_duration
                 << " ms" << std::endl;
 #endif
 #if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_PREVIEW)
     // GPU PREVIEW
+
+    Xrender::gpu_outline_preview gpu_preview_worker{gpu_tree, device_camera};
+
     start = std::chrono::steady_clock::now();
-    const auto gpu_review = Xrender::gpu_render_outline_preview(gpu_tree, device_camera, preview_sample_count, gpu_thread_per_block);
+    gpu_preview_worker.integrate(preview_sample_count);
+    const auto gpu_review = gpu_preview_worker.develop();
     end = std::chrono::steady_clock::now();
 
     const auto gpu_preview_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
-    std::cout   << "Rendered gpu Preview in " 
+    std::cout   << "Rendered gpu Preview in "
                 << gpu_preview_duration
                 << " ms" << std::endl;
 
@@ -160,9 +160,9 @@ int main()
 #if defined(ENABLE_GPU_COMPUTE) && defined(ENABLE_RENDER)
     //GPU RENDER
     start = std::chrono::steady_clock::now();
-    auto gpu_rendered_sensor = Xrender::gpu_naive_mc(gpu_tree, device_camera, render_sample_count, gpu_thread_per_block);
+    auto gpu_rendered_sensor = Xrender::gpu_naive_mc(gpu_tree, device_camera, render_sample_count, 256);
     end = std::chrono::steady_clock::now();
-    
+
     const auto gpu_render_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
 
     std::cout
@@ -178,7 +178,7 @@ int main()
     std::cout << "\nSummary :\n" <<
                 "  Model load : " << model_load_duration << " ms\n"
                 "  BVH build  : " << tree_build_duration << " ms\n"
-#ifdef ENABLE_PREVIEW  
+#ifdef ENABLE_PREVIEW
                 "  Preview : \n"
 #ifdef ENABLE_CPU_COMPUTE
                 "    cpu     : " << cpu_preview_duration << " ms\n"
