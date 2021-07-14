@@ -26,7 +26,7 @@ namespace Xrender
             "Xrender", 0, 0,
             camera.get_image_width(),
             camera.get_image_height(),
-            SDL_WINDOW_OPENGL);
+            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
         _gl_context = SDL_GL_CreateContext(_window);
 
@@ -107,12 +107,12 @@ namespace Xrender
     {
         switch (key.sym)
         {
-        case SDLK_PAGEUP:   _next_renderer(); break;
-        case SDLK_PAGEDOWN: _next_renderer(true); break;
-        case SDLK_SPACE:    _reset_current_renderer(); break;
-        case SDLK_UP:       camera_update_focal_length(_camera, _camera._focal_length * 1.1); _reset_current_renderer(); break;
-        case SDLK_DOWN:     camera_update_focal_length(_camera, _camera._focal_length / 1.1); _reset_current_renderer(); break;
-        case SDLK_ESCAPE:   _switch_fast_mode(); break;
+            case SDLK_PAGEUP:   _next_renderer(); break;
+            case SDLK_PAGEDOWN: _next_renderer(true); break;
+            case SDLK_SPACE:    _reset_current_renderer(); break;
+            case SDLK_UP:       camera_update_focal_length(_camera, _camera._focal_length * 1.1); _reset_current_renderer(); break;
+            case SDLK_DOWN:     camera_update_focal_length(_camera, _camera._focal_length / 1.1); _reset_current_renderer(); break;
+            case SDLK_ESCAPE:   _switch_fast_mode(); break;
         }
     }
 
@@ -130,6 +130,10 @@ namespace Xrender
                 case SDL_KEYDOWN:    _handle_key_down(event.key.keysym); break;
                 case SDL_MOUSEWHEEL: _handle_mouse_wheel(event.wheel.y > 0); break;
                 case SDL_QUIT:       return true; break;
+
+                case SDL_WINDOWEVENT:
+                    if (event.window.event == SDL_WINDOWEVENT_RESIZED)
+                        _update_size();
             }
         }
 
@@ -168,6 +172,8 @@ namespace Xrender
         int height = 0;
         SDL_GetWindowSize(_window, &width, &height);
         glViewport(0, 0, width, height);
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
         glOrtho(0.f, 1.f, 0.f, 1.f, -1.f, 1.f);
     }
 
