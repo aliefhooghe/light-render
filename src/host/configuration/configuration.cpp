@@ -45,13 +45,13 @@ namespace Xrender
         }
 
         std::cout << "Loaded configuration " << config_path.generic_string() << "\n"
-                  << "\tModel Path       : " << config.model_path << "\n"
-                  << "\tFocal Length     : " << config.camera_config.focal_length << "\n"
-                  << "\tFocus Distance   : " << config.camera_config.focus_distance << "\n"
-                  << "\tDiaphragm Radius : " << config.camera_config.diaphragm_radius << "\n"
-                  << "\tSensor Width     : " << config.camera_config.sensor_width << "\n"
-                  << "\tImage Width      : " << config.camera_config.image_width << "\n"
-                  << "\tImage Height     : " << config.camera_config.image_height << std::endl;
+                  << "\tModel Path       : " << config.model_path.generic_string() << "\n"
+                  << "\tFocal Length     : " << config.camera_config.focal_length << " m\n"
+                  << "\tFocus Distance   : " << config.camera_config.focus_distance << " m\n"
+                  << "\tDiaphragm Radius : " << config.camera_config.diaphragm_radius << " m\n"
+                  << "\tSensor Width     : " << config.camera_config.sensor_width << " m\n"
+                  << "\tImage Width      : " << config.camera_config.image_width << " pixels \n"
+                  << "\tImage Height     : " << config.camera_config.image_height << " pixels " << std::endl;
 
         return config;
     }

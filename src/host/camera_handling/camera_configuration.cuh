@@ -9,6 +9,11 @@ namespace Xrender
 
     void configure_camera(const camera_configuration &, camera &);
 
+    /**
+     * \brief Update focal length and keep the focus distance
+     */
+    void camera_update_focal_length(camera &, float focal_length);
+
 }
 
 #endif
