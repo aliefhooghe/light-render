@@ -14,7 +14,6 @@ namespace Xrender
         CUDA_CHECK(cudaGraphicsMapResources(1, &_graphic_resource, nullptr));
         CUDA_CHECK(cudaGraphicsSubResourceGetMappedArray(&array, _graphic_resource, 0, 0));
 
-
         cudaResourceDesc resource_desc;
         resource_desc.resType = cudaResourceTypeArray;
         resource_desc.res.array.array = array;
@@ -42,11 +41,6 @@ namespace Xrender
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glEnable(GL_TEXTURE_2D);
-
-        // glBindTexture(GL_TEXTURE_2D, 0u);
-
-        auto error = glGetError(); // GL_NO_ERROR
-        std::cout << "glGetError : "<< (char*)gluErrorString(error) << std::endl;
 
         CUDA_CHECK(cudaGetLastError())
 

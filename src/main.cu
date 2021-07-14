@@ -47,6 +47,7 @@ int main(int argc, char **argv)
     display.add_renderer<preview_renderer>(device_bvh, cam);
     display.add_renderer<naive_mc_renderer>(device_bvh, cam);
 
+    std::cout << "Start rendering." << std::endl;
     display.execute();
 
     CUDA_CHECK(cudaFree(device_bvh));

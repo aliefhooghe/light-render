@@ -91,7 +91,7 @@ namespace Xrender
         ) % _renderers.size();
 
         _reset_current_renderer();
-        std::cout << "Switch to renderer " << _current_renderer << std::endl;
+        std::cout << "\nSwitch to renderer " << _current_renderer << std::endl;
     }
 
     __host__ void renderer_display::_reset_current_renderer()
@@ -173,7 +173,7 @@ namespace Xrender
     {
         _fast_mode = !_fast_mode;
 
-        std::cout <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
+        std::cout << "\n" <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
 
         if (_fast_mode)
             _interval = std::chrono::milliseconds{fast_interval};

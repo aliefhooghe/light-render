@@ -33,9 +33,9 @@ namespace Xrender {
         const auto interval = duration_cast<decltype(duration)>(_interval);
 
         std::cout
-            << "Integrated " << _sample_per_step << " more samples\n"
+            << "\rIntegrated " << _sample_per_step << " more samples; "
             << "recorded_speed : " << (100.f * static_cast<float>(interval.count())/static_cast<float>(duration.count()))
-            << " % (" << (recorded_speed * 1E9) << " spp/sec)" << std::endl;
+            << " % (" << (recorded_speed * 1E9) << " spp/sec)" << std::flush;
 
         _sample_per_step = std::max<std::size_t>(1u, std::ceil(recorded_speed * interval.count()));
     }
