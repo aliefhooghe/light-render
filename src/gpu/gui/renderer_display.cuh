@@ -8,14 +8,14 @@
 #include "abstract_renderer.h"
 #include "renderer_manager.h"
 
-#include "gpu/gpu_camera.cuh"
-#include "gpu/gpu_texture.cuh"
+#include "gpu/model/camera.cuh"
+#include "gpu/gui/gpu_texture.cuh"
 
 namespace Xrender {
 
     class renderer_display {
     public:
-        __host__ renderer_display(device_camera& camera);
+        __host__ renderer_display(camera& camera);
         __host__ ~renderer_display() noexcept;
 
         __host__ void execute();
@@ -42,7 +42,7 @@ namespace Xrender {
         __host__ void _switch_fast_mode();
         __host__ void _set_interval(std::chrono::milliseconds interval);
 
-        device_camera& _camera;
+        camera& _camera;
         std::unique_ptr<gpu_texture> _texture{nullptr};
         SDL_Window *_window{nullptr};
         SDL_GLContext _gl_context{nullptr};

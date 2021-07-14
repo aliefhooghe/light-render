@@ -11,7 +11,7 @@
 
 namespace Xrender
 {
-    __host__ renderer_display::renderer_display(device_camera &camera)
+    __host__ renderer_display::renderer_display(camera &camera)
     :   _camera{camera}
     {
         static bool sdl_was_init = false;

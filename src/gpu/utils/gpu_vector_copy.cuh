@@ -3,7 +3,8 @@
 
 #include <vector>
 #include <cuda.h>
-#include "gpu/cuda_exception.cuh"
+
+#include "cuda_exception.cuh"
 
 namespace Xrender
 {
