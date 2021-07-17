@@ -1,6 +1,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <future>
 
 #include "random_generator.cuh"
 #include "bvh_builder.cuh"
@@ -160,14 +161,27 @@ namespace Xrender
     template <typename Titerator>
     static __host__ std::unique_ptr<host_bvh_tree> build_branch(Titerator begin, Titerator end)
     {
+        constexpr auto parallel_threshold = 2000;
+        const auto face_count = end - begin;
+        const auto launch_mode =
+            (face_count <= parallel_threshold) ? std::launch::deferred : std::launch::async;
+
         // Build node bounding box
         auto branch = std::make_unique<host_bvh_tree>();
         branch->box = make_aabb_box(begin, end);
 
         // find best partition and build childs
         const auto partition = find_partition(begin, end, 32);
-        branch->left_child = build_node(begin, partition);
-        branch->right_child = build_node(partition, end);
+
+        // Build box and childs childs in parralell
+        auto left_child_handle =
+            std::async(launch_mode, build_node<Titerator>, begin, partition);
+        auto right_child_handle =
+            std::async(launch_mode, build_node<Titerator>, partition, end);
+
+        branch->box = make_aabb_box(begin, end);
+        branch->left_child = left_child_handle.get();
+        branch->right_child = right_child_handle.get();
 
         return branch;
     }
