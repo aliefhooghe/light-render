@@ -17,6 +17,11 @@ namespace Xrender
         float3 absorption;
     };
 
+    struct mirror_mtl
+    {
+        float3 reflection;
+    };
+
     struct glass_mtl
     {
         float reflexivity;
@@ -31,6 +36,7 @@ namespace Xrender
         {
             SOURCE,
             LAMBERTIAN,
+            MIRROR,
             GLASS
         } type;
 
@@ -38,6 +44,7 @@ namespace Xrender
         {
             source_mtl source;
             lambertian_mtl lambertian;
+            mirror_mtl mirror;
             glass_mtl glass;
         };
 
@@ -48,6 +55,7 @@ namespace Xrender
 
     material make_source_material();
     material make_lambertian_materal(float3 absorption);
+    material make_mirror_material(float3 reflection);
     material make_glass_material(float reflexivity, const float3 &tf, const float3 &ks, float a, float b);
 
     static __device__ bool gpu_mtl_is_source(const material &mtl)
@@ -64,6 +72,8 @@ namespace Xrender
             return {0.f, 1.f, 0.f};
         case material::LAMBERTIAN:
             return mtl.lambertian.absorption;
+        case material::MIRROR:
+            return mtl.mirror.reflection;
         case material::GLASS:
             return mtl.glass.tf;
         }

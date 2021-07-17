@@ -68,8 +68,8 @@ namespace Xrender
                     mtl_builder.decl_mtl_type(material::SOURCE);
                 else if (line.rfind("#Lambertian", 0) == 0)
                     mtl_builder.decl_mtl_type(material::LAMBERTIAN);
-                // else if (line.rfind("#Mirror", 0) == 0)
-                //     mtl_builder.decl_mtl_type(material::MIRROR);
+                else if (line.rfind("#Mirror", 0) == 0)
+                    mtl_builder.decl_mtl_type(material::MIRROR);
                 else if (line.rfind("#Glass", 0) == 0)
                     mtl_builder.decl_mtl_type(material::GLASS);
                 else

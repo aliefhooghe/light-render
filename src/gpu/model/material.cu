@@ -32,6 +32,14 @@ namespace Xrender
         return mtl;
     }
 
+    material make_mirror_material(float3 reflection)
+    {
+        material mtl;
+        mtl.type = material::MIRROR;
+        mtl.mirror.reflection = reflection;
+        return mtl;
+    }
+
     material make_glass_material(float reflexivity, const float3& tf, const float3& ks, float a, float b)
     {
         const float3 n = {

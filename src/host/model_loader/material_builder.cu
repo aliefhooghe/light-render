@@ -22,9 +22,9 @@ namespace Xrender
         case material::SOURCE:
             _temperature = 4000.0f;
             break;
-        // case material::MIRROR:
-        //     _ks = {0.99f, 0.99f, 0.99f};
-        //     break;
+        case material::MIRROR:
+            _ks = {0.99f, 0.99f, 0.99f};
+            break;
         case material::GLASS:
             _reflexivity = 0.1f;
             _tf = {0.8, 0.8, 0.8};
@@ -94,9 +94,9 @@ namespace Xrender
         case material::SOURCE:
             return make_source_material(/*_temperature*/);
             break;
-        // case material::MIRROR:
-        //     return make_mirror_material(_ks);
-        //     break;
+        case material::MIRROR:
+            return make_mirror_material(_ks);
+            break;
         case material::GLASS:
             return make_glass_material(_reflexivity, _tf, _ks, _cauchy_a, _cauchy_b);
             break;
