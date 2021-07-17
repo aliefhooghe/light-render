@@ -13,13 +13,14 @@ namespace Xrender
         gpu_node.type = bvh_node::BOX;
         gpu_node.node.box = branch.box;
 
-        auto& root = gpu_tree.emplace_back(std::move(gpu_node));
+        const auto root_index = gpu_tree.size();
+        gpu_tree.emplace_back(std::move(gpu_node));
 
         // Push left child
         _push_node(gpu_tree, branch.left_child);
 
         // Update root info
-        root.node.second_child_idx = gpu_tree.size();
+        gpu_tree[root_index].node.second_child_idx = gpu_tree.size();
 
         // Push right child
         _push_node(gpu_tree, branch.right_child);
