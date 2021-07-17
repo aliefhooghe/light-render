@@ -113,6 +113,8 @@ namespace Xrender
             case SDLK_UP:       camera_update_focal_length(_camera, _camera._focal_length * 1.1); _reset_current_renderer(); break;
             case SDLK_DOWN:     camera_update_focal_length(_camera, _camera._focal_length / 1.1); _reset_current_renderer(); break;
             case SDLK_ESCAPE:   _switch_fast_mode(); break;
+            case SDLK_p:        _update_parameter(_camera._diaphragm_radius, true); break;
+            case SDLK_m:        _update_parameter(_camera._diaphragm_radius, false); break;
         }
     }
 
