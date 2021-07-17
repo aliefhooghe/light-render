@@ -58,6 +58,10 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/material_builder.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cu
 )
 

@@ -5,6 +5,7 @@
 #include "host/camera_handling/camera_configuration.cuh"
 #include "host/model_loader/wavefront_obj.cuh"
 #include "host/bvh_builder/bvh_builder.cuh"
+#include "host/utils/chronometer.h"
 #include "gpu/gui/renderer_display.cuh"
 #include "gpu/renderers/preview_renderer.cuh"
 #include "gpu/renderers/naive_mc_renderer.cuh"
@@ -27,6 +28,7 @@ int main(int argc, char **argv)
     }
 
     render_configuration config = load_render_configuration(argv[1]);
+    chronometer timewatch{};
 
     std::cout << "Configure camera" << std::endl;
     camera cam{};
@@ -36,9 +38,11 @@ int main(int argc, char **argv)
     const auto model = wavefront_obj_load(config.model_path);
 
     std::cout << "Building bvh tree" << std::endl;
+    timewatch.start();
     const auto bvh = build_bvh_tree(model);
+    const auto bvh_build_duration = timewatch.stop();
 
-    std::cout << "Allocate and copy resources to gpu" << std::endl;
+    std::cout << "Bvh build took " << bvh_build_duration.count() << " ms\nAllocate and copy resources to gpu" << std::endl;
     auto *device_bvh = clone_to_device(bvh);
 
     std::cout << "Initialize display" << std::endl;
