@@ -35,7 +35,7 @@ namespace Xrender {
         std::cout
             << "\rIntegrated " << _sample_per_step << " more samples; "
             << "recorded_speed : " << (100.f * static_cast<float>(interval.count())/static_cast<float>(duration.count()))
-            << " % (" << (recorded_speed * 1E9) << " spp/sec)" << std::flush;
+            << " % (" << (recorded_speed * 1E9) << " spp/sec; total = " << _renderer->get_total_sample_count() << " spp )" << std::flush;
 
         _sample_per_step = std::max<std::size_t>(1u, std::ceil(recorded_speed * interval.count()));
     }

@@ -62,6 +62,11 @@ namespace Xrender
         CUDA_CHECK(cudaDeviceSynchronize());
     }
 
+    __host__ std::size_t gpu_renderer::get_total_sample_count()
+    {
+        return _total_sample_count;
+    }
+
     // __host__ std::vector<rgb24> gpu_renderer::develop()
     // {
     //     return {};

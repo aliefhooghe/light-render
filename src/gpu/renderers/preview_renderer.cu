@@ -124,6 +124,6 @@ namespace Xrender {
 
     float preview_renderer::_develop_factor()
     {
-        return 1.f / static_cast<float>(_sensor_total_sample_count());
+        return 1.f / static_cast<float>(get_total_sample_count());
     }
 }

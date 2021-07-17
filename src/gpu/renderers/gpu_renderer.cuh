@@ -23,6 +23,7 @@ namespace Xrender {
         __host__ void reset() override;
         __host__ void integrate(std::size_t sample_count) override;
         __host__ void develop_to_texture(gpu_texture& texture) override;
+        __host__ std::size_t get_total_sample_count() override;
 
         // __host__ std::vector<rgb24> develop();
 
@@ -32,7 +33,6 @@ namespace Xrender {
 
         __host__ inline const auto& _image_grid_dim() const noexcept { return _grid_dim; }
         __host__ inline const auto _image_thread_per_block() const noexcept { return _thread_per_block; }
-        __host__ inline const auto _sensor_total_sample_count() const noexcept { return _total_sample_count; }
 
         camera& _camera;
 

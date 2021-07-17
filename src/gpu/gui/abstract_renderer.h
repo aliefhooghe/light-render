@@ -16,6 +16,7 @@ namespace Xrender {
         virtual void reset() = 0;
         virtual void integrate(std::size_t sample_count) = 0;
         virtual void develop_to_texture(gpu_texture& texture) = 0;
+        virtual std::size_t get_total_sample_count() = 0;
         //  TODO develop to vector
     };
 }

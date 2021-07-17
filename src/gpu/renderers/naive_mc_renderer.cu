@@ -134,7 +134,7 @@ namespace Xrender {
 
     __host__ void naive_mc_renderer::_call_develop_to_texture_kernel(const float3 *sensor, cudaSurfaceObject_t texture)
     {
-        const auto factor = 3.f / _sensor_total_sample_count();
+        const auto factor = 3.f / get_total_sample_count();
         render_develop_to_surface_kernel<<<_image_grid_dim(), _image_thread_per_block()>>>(
             sensor, texture, factor, _camera.get_image_width());
     }
