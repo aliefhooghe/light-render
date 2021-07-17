@@ -8,6 +8,13 @@
 
 namespace Xrender
 {
+
+    std::launch choose_launch_mode(const std::size_t count)
+    {
+        constexpr auto parallel_threshold = 2000;
+        return (count <= parallel_threshold) ? std::launch::deferred : std::launch::async;
+    }
+
     /**
      * \brief return half the surface of a aabb box
      */
@@ -97,18 +104,23 @@ namespace Xrender
     }
 
     /**
-     * \brief compute the SAH heuristic for a given partition
+     * \brief compute the SAH heuristic for a given partition if it is better thant the best one
      */
     template <typename Titerator>
-    static __host__ float compute_partition_sah_heuristic(Titerator begin1, Titerator begin2, Titerator end)
+    static __host__ float compute_partition_sah_heuristic(float best_sah, Titerator begin1, Titerator begin2, Titerator end)
     {
         const auto count1 = begin2 - begin1; // end
         const auto count2 = end - begin2;
 
         const auto box1 = make_aabb_box(begin1, begin2);
+        const auto box1_sah = (float)count1 * aabb_box_half_area(box1);
+
+        if (box1_sah > best_sah)
+            return box1_sah; // will be ignored
+
         const auto box2 = make_aabb_box(begin2, end);
 
-        return (float)count1 * aabb_box_half_area(box1) + (float)count2 * aabb_box_half_area(box2);
+        return box1_sah + (float)count2 * aabb_box_half_area(box2);
     }
 
     /**
@@ -139,7 +151,7 @@ namespace Xrender
         for (auto i = 0; i < pivot_test_count; ++i)
         {
             const auto partition = begin + (i * (count - 1u)) / pivot_test_count;
-            const float partition_sah = compute_partition_sah_heuristic(begin, partition, end);
+            const float partition_sah = compute_partition_sah_heuristic(best_sah, begin, partition, end);
 
             if (partition_sah < best_sah)
             {
@@ -161,10 +173,8 @@ namespace Xrender
     template <typename Titerator>
     static __host__ std::unique_ptr<host_bvh_tree> build_branch(Titerator begin, Titerator end)
     {
-        constexpr auto parallel_threshold = 2000;
         const auto face_count = end - begin;
-        const auto launch_mode =
-            (face_count <= parallel_threshold) ? std::launch::deferred : std::launch::async;
+        const auto launch_mode = choose_launch_mode(face_count);
 
         // Build node bounding box
         auto branch = std::make_unique<host_bvh_tree>();
