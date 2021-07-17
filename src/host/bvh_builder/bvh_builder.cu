@@ -150,50 +150,49 @@ namespace Xrender
         return best_partition;
     }
 
+
+    template <typename Titerator>
+    static __host__ host_bvh_tree::node build_node(Titerator begin, Titerator end);
+
     /**
-     * \brief Build a branch with the given faces with branch's root at given position in tree
+     * \brief Build a branch with the given faces (The must be more than one face)
      */
     template <typename Titerator>
-    static __host__ std::size_t build_branch(Titerator begin, Titerator end, std::vector<bvh_node> &tree, std::size_t root_index)
+    static __host__ std::unique_ptr<host_bvh_tree> build_branch(Titerator begin, Titerator end)
     {
-        //  Reallocate nodes if needed
-        if (tree.size() <= root_index)
-            tree.resize(1u + 2u * tree.size());
+        // Build node bounding box
+        auto branch = std::make_unique<host_bvh_tree>();
+        branch->box = make_aabb_box(begin, end);
 
+        // find best partition and build childs
+        const auto partition = find_partition(begin, end, 32);
+        branch->left_child = build_node(begin, partition);
+        branch->right_child = build_node(partition, end);
+
+        return branch;
+    }
+
+    /**
+     * \brief Build a node with the given faces
+     */
+    template <typename Titerator>
+    static __host__ host_bvh_tree::node build_node(Titerator begin, Titerator end)
+    {
         // Only one face
         if (begin + 1 == end)
         {
-            tree[root_index].type = bvh_node::LEAF;
-            tree[root_index].leaf = **begin;
-            return root_index + 1u;
+            // return face as leaf
+            return **begin;
         }
         else
         {
-            // find best partition
-            const auto partition = find_partition(begin, end, 32);
-            const auto node_box = make_aabb_box(begin, end);
-
-            // build first child
-            const auto first_child_index = root_index + 1u;
-            const auto second_child_index = build_branch(begin, partition, tree, first_child_index);
-
-            // fill node
-            tree[root_index].type = bvh_node::BOX;
-            tree[root_index].node = bvh_parent{
-                node_box,
-                static_cast<decltype(bvh_parent::second_child_idx)>(second_child_index)};
-
-            // create second branch an return leading index
-            return build_branch(partition, end, tree, second_child_index);
+            return build_branch(begin, end);
         }
     }
 
-    __host__ std::vector<bvh_node> build_bvh_tree(const std::vector<face> &model)
+    __host__ std::unique_ptr<host_bvh_tree> build_bvh_tree(const std::vector<face>& model)
     {
         const auto face_count = model.size();
-        // Optmistic allaction (for a perfectly balanced tree)
-        // build_branch will reallocate when needed
-        std::vector<bvh_node> tree(2u * face_count);
         std::vector<const face *> model_faces{face_count};
 
         // Get faces ptr in a buffer (in order to sort them)
@@ -201,35 +200,7 @@ namespace Xrender
             model.begin(), model.end(), model_faces.begin(),
             [](const auto& f) { return &f; });
 
-        // Build tree : root branch
-        const auto node_count = build_branch(model_faces.begin(), model_faces.end(), tree, 0u);
-        tree.resize(node_count);
-
-        std::cout << "Bvh tree was built : \n"
-                  << "\tface_count : " << face_count << "\n"
-                  << "\tnode_count : " << node_count << "\n"
-                  << "\tmax depth  : " << bvh_tree_max_depth(tree) << std::endl;
-
-        return tree;
-    }
-
-    static __host__ std::size_t branch_max_depth(const std::vector<bvh_node> &tree, std::size_t root_index)
-    {
-        if (tree[root_index].type == bvh_node::LEAF)
-        {
-            return 1u;
-        }
-        else
-        {
-            return 1u + std::max(
-                branch_max_depth(tree, root_index + 1u),
-                branch_max_depth(tree, tree[root_index].node.second_child_idx));
-        }
-    }
-
-    __host__ std::size_t bvh_tree_max_depth(const std::vector<bvh_node> &tree)
-    {
-        return branch_max_depth(tree, 0u);
+        return build_branch(model_faces.begin(), model_faces.end());
     }
 
 }

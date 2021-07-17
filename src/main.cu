@@ -39,11 +39,12 @@ int main(int argc, char **argv)
 
     std::cout << "Building bvh tree" << std::endl;
     timewatch.start();
-    const auto bvh = build_bvh_tree(model);
+    const auto host_bvh = build_bvh_tree(model);
+    const auto gpu_bvh = host_bvh->to_gpu_bvh();
     const auto bvh_build_duration = timewatch.stop();
 
     std::cout << "Bvh build took " << bvh_build_duration.count() << " ms\nAllocate and copy resources to gpu" << std::endl;
-    auto *device_bvh = clone_to_device(bvh);
+    auto *device_bvh = clone_to_device(gpu_bvh);
 
     std::cout << "Initialize display" << std::endl;
     renderer_display display{cam};

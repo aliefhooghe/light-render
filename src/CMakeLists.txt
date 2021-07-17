@@ -46,6 +46,8 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/host/bitmap/bitmap.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/bvh_builder/bvh_builder.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/host/bvh_builder/bvh_builder.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/bvh_builder/host_bvh_tree.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/bvh_builder/host_bvh_tree.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/host/bvh_builder/random_generator.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/host/bvh_builder/random_generator.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/host/camera_handling/camera_configuration.cu
