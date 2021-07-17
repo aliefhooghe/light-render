@@ -75,7 +75,7 @@ namespace Xrender {
 
             //  Initialize first ray
             dir = cam.sample_ray(&rand_state, pos, x, y);
-            geo_coeff = dir.y;
+            geo_coeff = 1.f;
             brdf_coeff = {1.f, 1.f, 1.f};
 
             while (sample_counter < sample_count)
@@ -111,7 +111,7 @@ namespace Xrender {
                 // start a new ray
                 sample_counter++;
                 dir = cam.sample_ray(&rand_state, pos, x, y);
-                geo_coeff = dir.y;
+                geo_coeff = 1.f;
                 brdf_coeff = {1.f, 1.f, 1.f};
             }
 
