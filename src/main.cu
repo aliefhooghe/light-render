@@ -37,7 +37,7 @@ int main(int argc, char **argv)
     std::cout << "Loading model " << config.model_path.generic_string() << std::endl;
     const auto model = wavefront_obj_load(config.model_path);
 
-    std::cout << "Building bvh tree" << std::endl;
+    std::cout << "Building bvh tree (" << model.size() << " faces)" << std::endl;
     timewatch.start();
     const auto host_bvh = build_bvh_tree(model);
     const auto bvh_build_duration = timewatch.stop();

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <iostream>
 #include <future>
+#include <execution>
 
 #include "random_generator.cuh"
 #include "bvh_builder.cuh"
@@ -11,7 +12,7 @@ namespace Xrender
 
     std::launch choose_launch_mode(const std::size_t count)
     {
-        constexpr auto parallel_threshold = 2000;
+        constexpr auto parallel_threshold = 100;
         return (count <= parallel_threshold) ? std::launch::deferred : std::launch::async;
     }
 
@@ -107,20 +108,15 @@ namespace Xrender
      * \brief compute the SAH heuristic for a given partition if it is better thant the best one
      */
     template <typename Titerator>
-    static __host__ float compute_partition_sah_heuristic(float best_sah, Titerator begin1, Titerator begin2, Titerator end)
+    static __host__ float compute_partition_sah_heuristic(float best_sah, Titerator begin, Titerator partition, Titerator end)
     {
-        const auto count1 = begin2 - begin1; // end
-        const auto count2 = end - begin2;
+        const auto count1 = partition - begin;
+        const auto count2 = end - partition;
 
-        const auto box1 = make_aabb_box(begin1, begin2);
-        const auto box1_sah = (float)count1 * aabb_box_half_area(box1);
+        const auto box1 = make_aabb_box(begin, partition);
+        const auto box2 = make_aabb_box(partition, end);
 
-        if (box1_sah > best_sah)
-            return box1_sah; // will be ignored
-
-        const auto box2 = make_aabb_box(begin2, end);
-
-        return box1_sah + (float)count2 * aabb_box_half_area(box2);
+        return (float)count1 * aabb_box_half_area(box1) + (float)count2 * aabb_box_half_area(box2);
     }
 
     /**
@@ -176,10 +172,6 @@ namespace Xrender
         const auto face_count = end - begin;
         const auto launch_mode = choose_launch_mode(face_count);
 
-        // Build node bounding box
-        auto branch = std::make_unique<host_bvh_tree>();
-        branch->box = make_aabb_box(begin, end);
-
         // find best partition and build childs
         const auto partition = find_partition(begin, end, 32);
 
@@ -189,6 +181,8 @@ namespace Xrender
         auto right_child_handle =
             std::async(launch_mode, build_node<Titerator>, partition, end);
 
+        // Build node
+        auto branch = std::make_unique<host_bvh_tree>();
         branch->box = make_aabb_box(begin, end);
         branch->left_child = left_child_handle.get();
         branch->right_child = right_child_handle.get();
