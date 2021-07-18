@@ -1,20 +1,14 @@
 
 #include <algorithm>
 #include <iostream>
-#include <future>
-#include <execution>
+#include <thread>
+#include <iostream>
 
 #include "random_generator.cuh"
 #include "bvh_builder.cuh"
 
 namespace Xrender
 {
-
-    std::launch choose_launch_mode(const std::size_t count)
-    {
-        constexpr auto parallel_threshold = 100;
-        return (count <= parallel_threshold) ? std::launch::deferred : std::launch::async;
-    }
 
     /**
      * \brief return half the surface of a aabb box
@@ -108,7 +102,7 @@ namespace Xrender
      * \brief compute the SAH heuristic for a given partition if it is better thant the best one
      */
     template <typename Titerator>
-    static __host__ float compute_partition_sah_heuristic(float best_sah, Titerator begin, Titerator partition, Titerator end)
+    static __host__ float compute_partition_sah_heuristic(Titerator begin, Titerator partition, Titerator end)
     {
         const auto count1 = partition - begin;
         const auto count2 = end - partition;
@@ -119,15 +113,114 @@ namespace Xrender
         return (float)count1 * aabb_box_half_area(box1) + (float)count2 * aabb_box_half_area(box2);
     }
 
+    template <typename Titerator>
+    auto partition_by_index(
+        std::size_t partition_index,
+        Titerator face_begin, Titerator face_end,
+        std::size_t total_partition_count)
+    {
+        const auto face_count = face_end - face_begin;
+        const auto face_idx = (partition_index + 1) * face_count / (total_partition_count + 1);
+        return face_begin + face_idx;
+    }
+
+    template <typename Titerator>
+    auto find_min_sah(
+        Titerator face_begin, Titerator face_end,
+        std::size_t partition_begin, std::size_t partition_end, std::size_t total_partition_count,
+        float& sah)
+    {
+        Titerator best_partition =
+            partition_by_index(partition_begin, face_begin, face_end, total_partition_count);
+        float best_sah =
+            compute_partition_sah_heuristic(face_begin, best_partition, face_end);
+
+        if (partition_end == partition_begin) throw;
+
+        for (auto i = partition_begin + 1; i < partition_end; ++i)
+        {
+            const auto partition =
+                partition_by_index(i, face_begin, face_end, total_partition_count);
+            const float partition_sah =
+                compute_partition_sah_heuristic(face_begin, partition, face_end);
+
+            if (partition_sah < best_sah)
+            {
+                best_sah = partition_sah;
+                best_partition = partition;
+            }
+        }
+
+        sah = best_sah;
+        return best_partition;
+    }
+
+    template <typename Titerator>
+    auto parallel_find_min_sah(std::size_t thread_count, Titerator begin, Titerator end)
+    {
+        constexpr auto min_pivot_per_thread = 12;
+
+        const auto count = end - begin;
+        const auto pivot_test_count = std::min(count - 1l, 256l);
+
+        std::size_t current_pivot = 0u;
+        const std::size_t blocksize = pivot_test_count / (thread_count + 1u);
+
+        std::vector<std::pair<Titerator, float>> results{thread_count};
+        std::vector<std::thread> workers{thread_count};
+
+        if (blocksize >= min_pivot_per_thread)
+        {
+            for (auto i = 0u; i < thread_count; i++)
+            {
+                auto worker_begin = current_pivot;
+                auto worker_end = current_pivot + blocksize;
+
+                workers[i] = std::thread{
+                    [i, &results, begin, end, pivot_test_count](std::size_t pbegin, std::size_t pend)
+                    {
+                        results[i].first =
+                            find_min_sah(
+                                begin, end,
+                                pbegin, pend, pivot_test_count,
+                                results[i].second);
+                    },
+                    worker_begin, worker_end};
+
+                current_pivot = worker_end;
+            }
+        }
+
+        float best_sah;
+        Titerator best_partition =
+            find_min_sah(
+                begin, end,
+                current_pivot, pivot_test_count, pivot_test_count,
+                best_sah);
+
+        if (blocksize >= min_pivot_per_thread)
+        {
+            for (auto i = 0u; i < thread_count; i++)
+            {
+                workers[i].join();
+
+                if (results[i].second < best_sah)
+                {
+                    best_partition = results[i].first;
+                    best_sah = results[i].second;
+                }
+            }
+        }
+
+        return best_partition;
+    }
+
     /**
      * \brief Try to find the partition with the lower SAH heuristic
      */
     template <typename Titerator>
     static __host__ auto find_partition(Titerator begin, Titerator end, std::size_t axis_sample_count)
     {
-        const auto count = end - begin;
-        const auto pivot_test_count = std::min(count - 1l, 1000l);
-
         // Generate an axis along which face are spread
         const auto sort_axis = find_axis(begin, end, axis_sample_count);
 
@@ -141,22 +234,7 @@ namespace Xrender
             });
 
         // Find the best partition
-        float best_sah = INFINITY;                    // less is better
-        Titerator best_partition = begin + count / 2; // TODO
-
-        for (auto i = 0; i < pivot_test_count; ++i)
-        {
-            const auto partition = begin + (i * (count - 1u)) / pivot_test_count;
-            const float partition_sah = compute_partition_sah_heuristic(best_sah, begin, partition, end);
-
-            if (partition_sah < best_sah)
-            {
-                best_sah = partition_sah;
-                best_partition = partition;
-            }
-        }
-
-        return best_partition;
+        return parallel_find_min_sah(15, begin, end);
     }
 
 
@@ -169,23 +247,14 @@ namespace Xrender
     template <typename Titerator>
     static __host__ std::unique_ptr<host_bvh_tree> build_branch(Titerator begin, Titerator end)
     {
-        const auto face_count = end - begin;
-        const auto launch_mode = choose_launch_mode(face_count);
-
         // find best partition and build childs
         const auto partition = find_partition(begin, end, 32);
-
-        // Build box and childs childs in parralell
-        auto left_child_handle =
-            std::async(launch_mode, build_node<Titerator>, begin, partition);
-        auto right_child_handle =
-            std::async(launch_mode, build_node<Titerator>, partition, end);
 
         // Build node
         auto branch = std::make_unique<host_bvh_tree>();
         branch->box = make_aabb_box(begin, end);
-        branch->left_child = left_child_handle.get();
-        branch->right_child = right_child_handle.get();
+        branch->left_child = build_node(begin, partition);
+        branch->right_child = build_node(partition, end);
 
         return branch;
     }
