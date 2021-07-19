@@ -15,7 +15,7 @@ namespace Xrender
      */
     static __device__ float3 sample_brdf(
         curandState *state,
-        const intersection &mtl,
+        const intersection &inter,
         const float3 &normal,
         const float3 &idir, float3 &edir);
 
