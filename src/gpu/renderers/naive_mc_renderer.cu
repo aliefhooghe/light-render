@@ -35,17 +35,11 @@ namespace Xrender {
         }
     }
 
-    __device__ float russian_roulette_prob(const float3& brdf_coeff)
+    __device__ float russian_roulette_prob(const float3& bounce_coeff)
     {
-        constexpr auto threshold = 10.f / 255.f;
-        constexpr auto min_prob = 0.2f;
-        constexpr auto max_prob = 2.f;
-        constexpr auto a = (max_prob - min_prob) / (1.f - threshold);
-        constexpr auto b = max_prob - a;
-
-        const auto estimator_norm = norm(brdf_coeff);
-        const float prob = a * estimator_norm + b;
-        return prob > 1.f ? 1.f : prob;
+        constexpr auto factor = 1.f;
+        const auto refl = fmaxf(bounce_coeff.x, fmaxf(bounce_coeff.y, bounce_coeff.z));
+        return fminf(factor * refl, 1.f);
     }
 
     __global__ void path_sampler_kernel(
@@ -74,35 +68,37 @@ namespace Xrender {
             float russian_roulette_factor = 1.f;
 
             //  Initialize first ray
+            int bounce = 0;
             dir = cam.sample_ray(&rand_state, pos, x, y);
             russian_roulette_factor = 1.f;
             brdf_coeff = {1.f, 1.f, 1.f};
 
             while (sample_counter < sample_count)
             {
-                // Russion roulette : does current ray worht the cost ?
-                const float roulette_prob = russian_roulette_prob(brdf_coeff);
-                if (curand_uniform(&rand_state) <= roulette_prob)
+                //  cast a ray
+                if (intersect_ray_bvh(bvh, pos, dir, inter))
                 {
-                    // keep the ray
-                    russian_roulette_factor /= roulette_prob;
+                    float3 next_dir;
+                    const float3 bounce_coeff = sample_brdf(&rand_state, inter, inter.normal, dir, next_dir);
+                    brdf_coeff *= bounce_coeff;
 
-                    //  cast a ray
-                    if (intersect_ray_bvh(bvh, pos, dir, inter))
+                    if (gpu_mtl_is_source(inter.mtl))
                     {
-                        float3 next_dir;
-                        brdf_coeff *= sample_brdf(&rand_state, inter.mtl, inter.normal, dir, next_dir);
+                        // record ray contribution
+                        estimator += (russian_roulette_factor * brdf_coeff);
+                    }
+                    else
+                    {
+                        // Russion roulette : does current ray worht the cost ?
+                        const float roulette_prob = russian_roulette_prob(bounce_coeff);
 
-                        if (gpu_mtl_is_source(inter.mtl))
+                        if (curand_uniform(&rand_state) < roulette_prob)
                         {
-                            // record ray contribution
-                            estimator += (russian_roulette_factor * brdf_coeff);
-                        }
-                        else
-                        {
-                            // geo_coeff *= fabs(dot(next_dir, inter.normal));
+                            // continue the ray
+                            russian_roulette_factor /= roulette_prob;
                             pos = inter.pos;
                             dir = next_dir;
+                            bounce++;
                             continue;
                         }
                     }
@@ -110,6 +106,7 @@ namespace Xrender {
 
                 // start a new ray
                 sample_counter++;
+                bounce=0;
                 dir = cam.sample_ray(&rand_state, pos, x, y);
                 russian_roulette_factor = 1.f;
                 brdf_coeff = {1.f, 1.f, 1.f};

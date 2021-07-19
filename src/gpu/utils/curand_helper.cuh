@@ -2,7 +2,7 @@
 #define CURAND_HELPER_CUH
 
 #include <curand_kernel.h>
-
+#include <math_constants.h>
 #include "gpu/model/float3_operators.cuh"
 
 namespace Xrender {
@@ -33,6 +33,28 @@ namespace Xrender {
     {
         const float3 ret = rand_unit_sphere_uniform(state);
         return dot(ret, normal) >= 0.0f ? ret : -ret;
+    }
+
+    // density(omega) = cos(dot(normal,ret))/pi
+    static __device__ float3 rand_unit_hemisphere_cos(curandState *state, const float3 &ab, const float3 &normal)
+    {
+        const auto basis_x = normalized(ab);
+        const auto basis_y = cross(normal, basis_x);
+        const float phi = 2.f * curand_uniform(state) * CUDART_PI_F;
+
+        const float sin_theta = sqrtf(curand_uniform(state));
+        const float cos_theta = sqrtf(1.f - sin_theta * sin_theta);
+
+        // const float cos_theta = curand_uniform(state);
+        // const float sin_theta = sqrtf(1.f - cos_theta * cos_theta);
+
+        const float cos_phi = cosf(phi);
+        const float sin_phi = sinf(phi);
+
+        return
+            (cos_phi * sin_theta) * basis_x +
+            (sin_phi * sin_theta) * basis_y +
+            cos_theta * normal;
     }
 
     static __device__ float2 rand_unit_disc_uniform(curandState *state)

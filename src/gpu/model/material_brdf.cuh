@@ -15,7 +15,7 @@ namespace Xrender
      */
     static __device__ float3 sample_brdf(
         curandState *state,
-        const material &mtl,
+        const intersection &mtl,
         const float3 &normal,
         const float3 &idir, float3 &edir);
 
@@ -24,20 +24,22 @@ namespace Xrender
         return src.emission;
     }
 
-    static __device__ float3 gpu_lambertian_brdf(curandState *state, const lambertian_mtl &lamb, const float3 &normal, float3 &edir)
+    static __device__ float3 gpu_lambertian_brdf(curandState *state, const intersection& inter, const float3 &normal, const float3 &idir, float3 &edir)
     {
         /**
-         *  density = uniform = 1/2pi
+         *  density = uniform = cos(theta_e) / pi
          *  brdf = lambertian = absorption/pi
+         *
+         *  => brdf(idir, edir) * cos(theta_e) / density(edir) = absorption
          */
-        edir = rand_unit_hemisphere_uniform(state, normal);
-        return 2.f * lamb.absorption * dot(normal, edir);
+        edir = rand_unit_hemisphere_cos(state, inter.ab, normal);
+        return inter.mtl.lambertian.absorption;
     }
 
     static __device__ float3 gpu_mirror_bfdf(curandState *state, const mirror_mtl &mirror, const float3 &normal, const float3 &idir, float3 &edir)
     {
         edir = idir - 2.f * dot(normal, idir) * normal;
-        return mirror.reflection; // * dot(normal, edir);
+        return mirror.reflection;
     }
 
     static __device__ float3 gpu_glass_brdf(curandState *state, const glass_mtl &glass, const float3 &normal, const float3 &idir, float3 &edir)
@@ -110,20 +112,20 @@ namespace Xrender
 
     static __device__ float3 sample_brdf(
         curandState *state,
-        const material &mtl,
+        const intersection &inter,
         const float3 &normal,
         const float3 &idir, float3 &edir)
     {
-        switch (mtl.type)
+        switch (inter.mtl.type)
         {
         case material::SOURCE:
-            return gpu_source_brdf(mtl.source);
+            return gpu_source_brdf(inter.mtl.source);
         case material::LAMBERTIAN:
-            return gpu_lambertian_brdf(state, mtl.lambertian, normal, edir);
+            return gpu_lambertian_brdf(state, inter, normal, idir, edir);
         case material::MIRROR:
-            return gpu_mirror_bfdf(state, mtl.mirror, normal, idir, edir);
+            return gpu_mirror_bfdf(state, inter.mtl.mirror, normal, idir, edir);
         default: /* GLASS */
-            return gpu_glass_brdf(state, mtl.glass, normal, idir, edir);
+            return gpu_glass_brdf(state, inter.mtl.glass, normal, idir, edir);
         }
     }
 

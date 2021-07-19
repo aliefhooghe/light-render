@@ -9,6 +9,7 @@ namespace Xrender
     {
         float3 pos;
         float3 normal;
+        float3 ab;
         float distance;
         material mtl;
     };
@@ -44,6 +45,7 @@ namespace Xrender
             inter.pos = pos + t * dir;
             inter.distance = t;
             inter.normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
+            inter.ab = fa.points[1] - fa.points[0];
             return true;
         }
         else {
