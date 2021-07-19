@@ -35,7 +35,7 @@ namespace Xrender {
         }
     }
 
-    __device__ float russian_roulette_prob(float geo_coeff, const float3& brdf_coeff)
+    __device__ float russian_roulette_prob(const float3& brdf_coeff)
     {
         constexpr auto threshold = 10.f / 255.f;
         constexpr auto min_prob = 0.2f;
@@ -43,7 +43,7 @@ namespace Xrender {
         constexpr auto a = (max_prob - min_prob) / (1.f - threshold);
         constexpr auto b = max_prob - a;
 
-        const auto estimator_norm = geo_coeff * norm(brdf_coeff);
+        const auto estimator_norm = norm(brdf_coeff);
         const float prob = a * estimator_norm + b;
         return prob > 1.f ? 1.f : prob;
     }
@@ -71,36 +71,36 @@ namespace Xrender {
             float3 pos;
             float3 dir;
             float3 brdf_coeff;
-            float  geo_coeff;
+            float russian_roulette_factor = 1.f;
 
             //  Initialize first ray
             dir = cam.sample_ray(&rand_state, pos, x, y);
-            geo_coeff = 1.f;
+            russian_roulette_factor = 1.f;
             brdf_coeff = {1.f, 1.f, 1.f};
 
             while (sample_counter < sample_count)
             {
                 // Russion roulette : does current ray worht the cost ?
-                const float roulette_prob = russian_roulette_prob(geo_coeff, brdf_coeff);
+                const float roulette_prob = russian_roulette_prob(brdf_coeff);
                 if (curand_uniform(&rand_state) <= roulette_prob)
                 {
                     // keep the ray
-                    geo_coeff /= roulette_prob;
+                    russian_roulette_factor /= roulette_prob;
 
                     //  cast a ray
                     if (intersect_ray_bvh(bvh, pos, dir, inter))
                     {
                         float3 next_dir;
-                        brdf_coeff *= gpu_brdf(&rand_state, inter.mtl, inter.normal, dir, next_dir);
+                        brdf_coeff *= sample_brdf(&rand_state, inter.mtl, inter.normal, dir, next_dir);
 
                         if (gpu_mtl_is_source(inter.mtl))
                         {
                             // record ray contribution
-                            estimator += (geo_coeff * brdf_coeff);
+                            estimator += (russian_roulette_factor * brdf_coeff);
                         }
                         else
                         {
-                            geo_coeff *= fabs(dot(next_dir, inter.normal));
+                            // geo_coeff *= fabs(dot(next_dir, inter.normal));
                             pos = inter.pos;
                             dir = next_dir;
                             continue;
@@ -111,7 +111,7 @@ namespace Xrender {
                 // start a new ray
                 sample_counter++;
                 dir = cam.sample_ray(&rand_state, pos, x, y);
-                geo_coeff = 1.f;
+                russian_roulette_factor = 1.f;
                 brdf_coeff = {1.f, 1.f, 1.f};
             }
 
@@ -134,7 +134,7 @@ namespace Xrender {
 
     __host__ void naive_mc_renderer::_call_develop_to_texture_kernel(const float3 *sensor, cudaSurfaceObject_t texture)
     {
-        const auto factor = 3.f / get_total_sample_count();
+        const auto factor = 1.f / get_total_sample_count();
         render_develop_to_surface_kernel<<<_image_grid_dim(), _image_thread_per_block()>>>(
             sensor, texture, factor, _camera.get_image_width());
     }

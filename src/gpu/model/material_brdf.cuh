@@ -7,6 +7,18 @@
 
 namespace Xrender
 {
+
+    /**
+     *  \brief Sample a material brdf :
+     *      Choose edit with a given angular density and return an estimator:
+     *  \return brdf(idir, edir) * cos(theta_e) / density(edir)
+     */
+    static __device__ float3 sample_brdf(
+        curandState *state,
+        const material &mtl,
+        const float3 &normal,
+        const float3 &idir, float3 &edir);
+
     static __device__ float3 gpu_source_brdf(const source_mtl &src)
     {
         return src.emission;
@@ -14,14 +26,18 @@ namespace Xrender
 
     static __device__ float3 gpu_lambertian_brdf(curandState *state, const lambertian_mtl &lamb, const float3 &normal, float3 &edir)
     {
+        /**
+         *  density = uniform = 1/2pi
+         *  brdf = lambertian = absorption/pi
+         */
         edir = rand_unit_hemisphere_uniform(state, normal);
-        return lamb.absorption;
+        return 2.f * lamb.absorption * dot(normal, edir);
     }
 
     static __device__ float3 gpu_mirror_bfdf(curandState *state, const mirror_mtl &mirror, const float3 &normal, const float3 &idir, float3 &edir)
     {
         edir = idir - 2.f * dot(normal, idir) * normal;
-        return mirror.reflection;
+        return mirror.reflection; // * dot(normal, edir);
     }
 
     static __device__ float3 gpu_glass_brdf(curandState *state, const glass_mtl &glass, const float3 &normal, const float3 &idir, float3 &edir)
@@ -92,7 +108,7 @@ namespace Xrender
         return 3.f * ks;
     }
 
-    static __device__ float3 gpu_brdf(
+    static __device__ float3 sample_brdf(
         curandState *state,
         const material &mtl,
         const float3 &normal,
