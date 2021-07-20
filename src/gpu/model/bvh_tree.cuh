@@ -6,7 +6,7 @@
 
 #include "face.cuh"
 
-#define BVH_MAX_DEPTH (64u)
+#define BVH_MAX_DEPTH (24u)
 
 namespace Xrender {
 
