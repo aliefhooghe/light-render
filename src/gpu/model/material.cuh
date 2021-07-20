@@ -61,7 +61,7 @@ namespace Xrender
 
     // Onmy lambertian / sources
 
-    material make_source_material();
+    material make_source_material(float tkelvin);
     material make_phong_material(float3 specular, float n);
     material make_lambertian_materal(float3 absorption);
     material make_mirror_material(float3 reflection);

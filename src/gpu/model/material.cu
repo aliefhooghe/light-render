@@ -16,11 +16,29 @@ namespace Xrender
         return a + b / (wavelength_micro * wavelength_micro);
     }
 
-    material make_source_material()
+    static constexpr float wv_luminance_by_temperature(const float Tkelvin, const float wavelength)
+    {
+        const double H = 6.62607015E-34f;     //  planck
+        const double C = 299792458.f;         //  light celerity
+        const double K = 1.380649E-23f;       //  boltzmann
+        return 1.0E-29f / (
+            wavelength*wavelength*wavelength*wavelength*wavelength * (expf(H * C / (wavelength * K * Tkelvin)) - 1.f));
+    }
+
+    float3 luminance_by_temperature(const float tkelvin)
+    {
+        return {
+            wv_luminance_by_temperature(tkelvin, red_wl_micro * 1E-6f),
+            wv_luminance_by_temperature(tkelvin, green_wl_micro * 1E-6f),
+            wv_luminance_by_temperature(tkelvin, blue_wl_micro * 1E-6f),
+        };
+    }
+
+    material make_source_material(float tkelvin)
     {
         material mtl;
         mtl.type = material::SOURCE;
-        mtl.source.emission = {1.f, 1.f, 1.f};
+        mtl.source.emission = luminance_by_temperature(tkelvin);
         return mtl;
     }
 

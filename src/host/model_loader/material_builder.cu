@@ -24,7 +24,7 @@ namespace Xrender
             _ns = 50.f;
             break;
         case material::SOURCE:
-            _temperature = 4000.0f;
+            _temperature = 4500.0f;
             break;
         case material::MIRROR:
             _ks = {0.99f, 0.99f, 0.99f};
@@ -97,7 +97,7 @@ namespace Xrender
         case material::PHONG:
             return make_phong_material(_ks, _ns);
         case material::SOURCE:
-            return make_source_material(/*_temperature*/);
+            return make_source_material(_temperature);
         case material::MIRROR:
             return make_mirror_material(_ks);
         case material::GLASS:
