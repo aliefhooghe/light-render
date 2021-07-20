@@ -69,9 +69,11 @@ namespace Xrender
         }
     }
 
-    __host__ void renderer_display::add_renderer(std::unique_ptr<abstract_renderer> &&renderer)
+    __host__ void renderer_display::add_view(
+        std::unique_ptr<abstract_renderer> &&renderer,
+        std::unique_ptr<abstract_image_developer> &&developer)
     {
-        _renderers.emplace_back(std::move(renderer));
+        _renderers.emplace_back(_camera, std::move(renderer), std::move(developer));
         _renderers.back().set_interval(_interval);
     }
 

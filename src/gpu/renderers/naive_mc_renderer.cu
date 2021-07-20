@@ -13,28 +13,6 @@
 
 namespace Xrender {
 
-    __global__ void render_develop_to_surface_kernel(
-        const float3 *sensor, cudaSurfaceObject_t surface, float factor, const int width)
-    {
-        //  Get pixel position in image
-        const int x = blockIdx.x * blockDim.x + threadIdx.x;
-        const int y = blockIdx.y;
-
-        if (x < width) {
-            const int pixel_index = x + y * width;
-
-            const auto rgb_value = sensor[pixel_index] * factor;
-            const float4 rgba_value = {
-                rgb_value.x,
-                rgb_value.y,
-                rgb_value.z,
-                1.f
-            };
-
-            surf2Dwrite(rgba_value, surface, x * sizeof(float4), y);
-        }
-    }
-
     __device__ float russian_roulette_prob(int bounce, const float3& bounce_coeff)
     {
         if (bounce < 3)
@@ -125,22 +103,20 @@ namespace Xrender {
         }
     }
 
-    naive_mc_renderer::naive_mc_renderer(const bvh_node *device_tree, camera& cam)
-    :   gpu_renderer{cam},
-        _device_tree{device_tree}
+    naive_mc_renderer::naive_mc_renderer(const bvh_node *device_tree, std::size_t thread_per_block)
+    :   _device_tree{device_tree},
+        _thread_per_block{thread_per_block}
     {
     }
 
-    __host__ void naive_mc_renderer::_call_integrate_kernel(std::size_t sample_count, curandState_t *rand_pool, float3 *sensor)
+    void naive_mc_renderer::call_integrate_kernel(
+        const camera &cam, curandState_t *rand_pool, std::size_t sample_count, float3 *sensor)
     {
-        path_sampler_kernel<<<_image_grid_dim(), _image_thread_per_block()>>>(
-            _device_tree, _camera, sample_count, rand_pool, sensor);
-    }
+        unsigned int thread_per_block = _thread_per_block;
+        const auto grid_dim = image_grid_dim(
+            cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
-    __host__ void naive_mc_renderer::_call_develop_to_texture_kernel(const float3 *sensor, cudaSurfaceObject_t texture)
-    {
-        const auto factor = 1.f / get_total_sample_count();
-        render_develop_to_surface_kernel<<<_image_grid_dim(), _image_thread_per_block()>>>(
-            sensor, texture, factor, _camera.get_image_width());
+        path_sampler_kernel<<<grid_dim, thread_per_block>>>(
+            _device_tree, cam, sample_count, rand_pool, sensor);
     }
 }

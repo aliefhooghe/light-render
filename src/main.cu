@@ -1,16 +1,17 @@
 
 #include <iostream>
 
-#include "host/configuration/configuration.h"
-#include "host/camera_handling/camera_configuration.cuh"
-#include "host/model_loader/wavefront_obj.cuh"
-#include "host/bvh_builder/bvh_builder.cuh"
-#include "host/utils/chronometer.h"
 #include "gpu/gui/renderer_display.cuh"
-#include "gpu/renderers/preview_renderer.cuh"
+#include "gpu/image_developers/average_image_developer.cuh"
 #include "gpu/renderers/naive_mc_renderer.cuh"
-#include "gpu/utils/gpu_vector_copy.cuh"
+#include "gpu/renderers/preview_renderer.cuh"
 #include "gpu/utils/cuda_exception.cuh"
+#include "gpu/utils/gpu_vector_copy.cuh"
+#include "host/bvh_builder/bvh_builder.cuh"
+#include "host/camera_handling/camera_configuration.cuh"
+#include "host/configuration/configuration.h"
+#include "host/model_loader/wavefront_obj.cuh"
+#include "host/utils/chronometer.h"
 
 void usage(const char *argv0)
 {
@@ -48,11 +49,15 @@ int main(int argc, char **argv)
     std::cout << "Bvh build took " << bvh_build_duration.count() << " ms; Convertion took " << bvh_convertion_duration.count() << " ms\nAllocate and copy resources to gpu" << std::endl;
     auto *device_bvh = clone_to_device(gpu_bvh);
 
-    std::cout << "Initialize display" << std::endl;
     renderer_display display{cam};
 
-    display.add_renderer<preview_renderer>(device_bvh, cam);
-    display.add_renderer<naive_mc_renderer>(device_bvh, cam);
+    // Initialize the views :
+    display.add_view(
+        std::make_unique<preview_renderer>(device_bvh),
+        std::make_unique<average_image_developer>());
+    display.add_view(
+        std::make_unique<naive_mc_renderer>(device_bvh),
+        std::make_unique<average_image_developer>());
 
     std::cout << "Start rendering." << std::endl;
     display.execute();

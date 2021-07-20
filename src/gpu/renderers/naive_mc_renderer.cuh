@@ -4,27 +4,28 @@
 #include <vector>
 
 #include "gpu/model/bvh_tree.cuh"
+#include "gpu/gui/abstract_renderer.cuh"
 
-#include "gpu_renderer.cuh"
+namespace Xrender
+{
 
-namespace Xrender {
-
-    class naive_mc_renderer : public gpu_renderer {
-
+    class naive_mc_renderer : public abstract_renderer
+    {
     public:
-        naive_mc_renderer(const naive_mc_renderer&) = delete;
-        naive_mc_renderer(naive_mc_renderer&&) noexcept = default;
-        __host__ naive_mc_renderer(const bvh_node *_device_tree, camera& cam);
-        ~naive_mc_renderer() noexcept = default;
+        __host__ naive_mc_renderer(
+            const bvh_node *_device_tree,
+            std::size_t thread_per_block = 256);
 
-    protected:
-        __host__ void _call_integrate_kernel(std::size_t sample_count, curandState_t *rand_pool, float3 *sensor) override;
-        __host__ void _call_develop_to_texture_kernel(const float3 *sensor, cudaSurfaceObject_t texture) override;
+        naive_mc_renderer(const naive_mc_renderer &) = delete;
+        naive_mc_renderer(naive_mc_renderer &&) noexcept = default;
+        ~naive_mc_renderer() noexcept override = default;
+
+        void call_integrate_kernel(
+            const camera &cam, curandState_t *rand_pool, std::size_t sample_count, float3 *sensor) override;
 
     private:
-        float _develop_factor();
-
         const bvh_node *_device_tree{nullptr};
+        std::size_t _thread_per_block{};
     };
 
 }

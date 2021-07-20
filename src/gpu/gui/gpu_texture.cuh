@@ -29,7 +29,7 @@ namespace Xrender {
 
         __host__ gpu_texture(unsigned int width, unsigned int height);
         gpu_texture(const gpu_texture&) = delete;
-        gpu_texture(gpu_texture&&) noexcept = default;
+        gpu_texture(gpu_texture&&) noexcept = delete; // todo
         __host__ ~gpu_texture() noexcept;
 
         __host__ unsigned int get_width() const noexcept;

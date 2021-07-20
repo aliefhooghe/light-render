@@ -5,8 +5,7 @@
 #include <vector>
 #include <SDL2/SDL.h>
 
-#include "abstract_renderer.h"
-#include "renderer_manager.h"
+#include "renderer_manager.cuh"
 
 #include "gpu/model/camera.cuh"
 #include "gpu/gui/gpu_texture.cuh"
@@ -16,16 +15,14 @@ namespace Xrender {
     class renderer_display {
     public:
         __host__ renderer_display(camera& camera);
+        renderer_display(const renderer_display&) = delete;
+        renderer_display(renderer_display&&) noexcept = delete;
         __host__ ~renderer_display() noexcept;
 
         __host__ void execute();
-        __host__ void add_renderer(std::unique_ptr<abstract_renderer>&& renderer);
-
-        template <typename Trenderer, typename ...Targs>
-        inline __host__ void add_renderer(Targs&& ...args)
-        {
-            add_renderer(std::make_unique<Trenderer>(std::forward<Targs>(args)...));
-        }
+        __host__ void add_view(
+            std::unique_ptr<abstract_renderer>&& renderer,
+            std::unique_ptr<abstract_image_developer>&& developer);
 
         static constexpr auto fast_interval = 10000u; // 10 s => 0.1 fps
         static constexpr auto interactive_interval = 60u; // 40 ms => 50 fps

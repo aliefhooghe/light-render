@@ -12,13 +12,15 @@ find_package(GLEW REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(xrender
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/abstract_renderer.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/abstract_renderer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/gpu_texture.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/gpu_texture.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_display.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_display.cuh
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_manager.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_manager.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_manager.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_manager.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/average_image_developer.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/average_image_developer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/bvh_tree_traversal.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/bvh_tree.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/camera.cu
@@ -29,8 +31,6 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/material_brdf.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/material.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/material.cuh
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/renderers/gpu_renderer.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/renderers/gpu_renderer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/renderers/naive_mc_renderer.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/renderers/naive_mc_renderer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/renderers/preview_renderer.cu
