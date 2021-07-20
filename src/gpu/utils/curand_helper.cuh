@@ -54,6 +54,24 @@ namespace Xrender {
             cos_theta * normal;
     }
 
+    static __device__ float3 rand_unit_hemisphere_cos_pow(curandState *state, float exponent, const float3 &ab, const float3 &normal)
+    {
+        const auto basis_x = normalized(ab);
+        const auto basis_y = cross(normal, basis_x);
+        const float phi = 2.f * curand_uniform(state) * CUDART_PI_F;
+
+        const float cos_theta = powf(curand_uniform(state), 1.f/(exponent + 1.f));
+        const float sin_theta = sqrtf(1.f - cos_theta * cos_theta);
+
+        const float cos_phi = cosf(phi);
+        const float sin_phi = sinf(phi);
+
+        return
+            (cos_phi * sin_theta) * basis_x +
+            (sin_phi * sin_theta) * basis_y +
+            cos_theta * normal;
+    }
+
     static __device__ float2 rand_unit_disc_uniform(curandState *state)
     {
         float2 ret;

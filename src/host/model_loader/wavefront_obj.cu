@@ -38,6 +38,21 @@ namespace Xrender
             }
             break;
 
+            case 'N':
+            {
+                float x;
+                char c;
+                if (sscanf(line.c_str(), "N%c %f", &c, &x) == 2)
+                {
+                    switch (c)
+                    {
+                        case 's': mtl_builder.decl_ns(x); break;
+                        case 'i': mtl_builder.decl_ni(x); break;
+                    }
+                }
+            }
+            break;
+
             case 'K':
             {
                 float x, y, z;
@@ -68,6 +83,8 @@ namespace Xrender
                     mtl_builder.decl_mtl_type(material::SOURCE);
                 else if (line.rfind("#Lambertian", 0) == 0)
                     mtl_builder.decl_mtl_type(material::LAMBERTIAN);
+                else if (line.rfind("#Phong", 0) == 0)
+                    mtl_builder.decl_mtl_type(material::PHONG);
                 else if (line.rfind("#Mirror", 0) == 0)
                     mtl_builder.decl_mtl_type(material::MIRROR);
                 else if (line.rfind("#Glass", 0) == 0)

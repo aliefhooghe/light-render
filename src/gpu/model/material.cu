@@ -24,6 +24,15 @@ namespace Xrender
         return mtl;
     }
 
+    material make_phong_material(float3 specular, float n)
+    {
+        material mtl;
+        mtl.type = material::PHONG;
+        mtl.phong.specular = specular;
+        mtl.phong.ns = n;
+        return mtl;
+    }
+
     material make_lambertian_materal(float3 absorption)
     {
         material mtl;

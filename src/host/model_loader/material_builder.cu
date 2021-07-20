@@ -19,6 +19,10 @@ namespace Xrender
         case material::LAMBERTIAN:
             _kd = {0.8, 0.8, 0.8};
             break;
+        case material::PHONG:
+            _ks = {0.8, 0.8, 0.8};
+            _ns = 50.f;
+            break;
         case material::SOURCE:
             _temperature = 4000.0f;
             break;
@@ -54,14 +58,14 @@ namespace Xrender
         _tf = tf;
     }
 
-    void material_builder::decl_ns(float ni)
-    {
-        _ni = ni;
-    }
-
-    void material_builder::decl_ni(float ns)
+    void material_builder::decl_ns(float ns)
     {
         _ns = ns;
+    }
+
+    void material_builder::decl_ni(float ni)
+    {
+        _ni = ni;
     }
 
     void material_builder::decl_temperature(float t)
@@ -90,16 +94,14 @@ namespace Xrender
         {
         case material::LAMBERTIAN:
             return make_lambertian_materal(_kd);
-            break;
+        case material::PHONG:
+            return make_phong_material(_ks, _ns);
         case material::SOURCE:
             return make_source_material(/*_temperature*/);
-            break;
         case material::MIRROR:
             return make_mirror_material(_ks);
-            break;
         case material::GLASS:
             return make_glass_material(_reflexivity, _tf, _ks, _cauchy_a, _cauchy_b);
-            break;
         default:
             throw std::runtime_error("materail_builder : Invalid internal mtl type");
         }

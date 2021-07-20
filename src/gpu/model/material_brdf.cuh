@@ -36,6 +36,18 @@ namespace Xrender
         return inter.mtl.lambertian.absorption;
     }
 
+    static __device__ float3 gpu_phong_brdf(curandState *state, const intersection& inter, const float3 &normal, const float3 &idir, float3 &edir)
+    {
+        /**
+         *  density = uniform = cos(theta_e)^n / pi
+         *  brdf = lambertian = absorption/pi
+         *
+         *  => brdf(idir, edir) * cos(theta_e) / density(edir) = absorption
+         */
+        edir = rand_unit_hemisphere_cos_pow(state, inter.mtl.phong.ns, inter.ab, normal);
+        return inter.mtl.phong.specular;
+    }
+
     static __device__ float3 gpu_mirror_bfdf(curandState *state, const mirror_mtl &mirror, const float3 &normal, const float3 &idir, float3 &edir)
     {
         edir = idir - 2.f * dot(normal, idir) * normal;
@@ -107,7 +119,7 @@ namespace Xrender
         }
 
         edir = idir - 2.f * dot(normal, idir) * normal;
-        return 3.f * ks;
+        return ks;
     }
 
     static __device__ float3 sample_brdf(
@@ -122,6 +134,8 @@ namespace Xrender
             return gpu_source_brdf(inter.mtl.source);
         case material::LAMBERTIAN:
             return gpu_lambertian_brdf(state, inter, normal, idir, edir);
+        case material::PHONG:
+            return gpu_phong_brdf(state, inter, normal, idir, edir);
         case material::MIRROR:
             return gpu_mirror_bfdf(state, inter.mtl.mirror, normal, idir, edir);
         default: /* GLASS */
