@@ -6,6 +6,7 @@
 #include "gpu/renderers/naive_mc_renderer.cuh"
 #include "gpu/renderers/preview_renderer.cuh"
 #include "gpu/utils/cuda_exception.cuh"
+#include "gpu/utils/device_probing.cuh"
 #include "gpu/utils/gpu_vector_copy.cuh"
 #include "host/bvh_builder/bvh_builder.cuh"
 #include "host/camera_handling/camera_configuration.cuh"
@@ -25,6 +26,11 @@ int main(int argc, char **argv)
     if (argc != 2)
     {
         usage(argv[0]);
+        return 1;
+    }
+    else if (!select_openGL_cuda_device())
+    {
+        std::cout << "No cuda capable device was found" << std::endl;
         return 1;
     }
 

@@ -39,6 +39,8 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/curand_helper.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/curand_pool.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/curand_pool.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/device_probing.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/device_probing.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/gpu_vector_copy.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/image_grid_dim.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/utils/image_grid_dim.cuh
