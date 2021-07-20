@@ -8,6 +8,7 @@
 #include <SDL2/SDL_opengl.h>
 
 #include "host/camera_handling/camera_configuration.cuh"
+#include "host/bitmap/bitmap.h"
 
 #include "renderer_display.cuh"
 
@@ -117,6 +118,7 @@ namespace Xrender
             case SDLK_ESCAPE:   _switch_fast_mode(); break;
             case SDLK_p:        _update_parameter(_camera._diaphragm_radius, true); break;
             case SDLK_m:        _update_parameter(_camera._diaphragm_radius, false); break;
+            case SDLK_s:        _save_current_image(); break;
         }
     }
 
@@ -194,5 +196,25 @@ namespace Xrender
 
         for (auto& renderer : _renderers)
             renderer.set_interval(_interval);
+    }
+
+    __host__ void renderer_display::_save_current_image()
+    {
+        const auto host_texture = _texture->retrieve_texture();
+        std::vector<rgb24> bitmap_data{host_texture.size()};
+
+        // Convert to 24 bit bitmap samples
+        std::transform(
+            host_texture.begin(), host_texture.end(),
+            bitmap_data.begin(),
+            [](const float4& rgba)
+            {
+                return rgb24::from_float(rgba.x, rgba.y, rgba.z);
+            });
+
+        std::cout << "\nSave image on disk" << std::endl;
+        bitmap_write(
+            "out.bmp", bitmap_data,
+            _texture->get_width(), _texture->get_height());
     }
 }

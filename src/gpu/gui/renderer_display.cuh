@@ -38,6 +38,7 @@ namespace Xrender {
         __host__ void _update_size();
         __host__ void _switch_fast_mode();
         __host__ void _set_interval(std::chrono::milliseconds interval);
+        __host__ void _save_current_image();
 
         camera& _camera;
         std::unique_ptr<gpu_texture> _texture{nullptr};
