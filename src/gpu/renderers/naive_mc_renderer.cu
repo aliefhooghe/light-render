@@ -35,11 +35,19 @@ namespace Xrender {
         }
     }
 
-    __device__ float russian_roulette_prob(const float3& bounce_coeff)
+    __device__ float russian_roulette_prob(int bounce, const float3& bounce_coeff)
     {
-        constexpr auto factor = 1.f;
-        const auto refl = fmaxf(bounce_coeff.x, fmaxf(bounce_coeff.y, bounce_coeff.z));
-        return fminf(factor * refl, 1.f);
+        if (bounce < 3)
+        {
+            return 1.f;
+        }
+        else
+        {
+            constexpr auto refl_factor = 1.f;
+            // constexpr auto bounce_factor = 1.f/30.f;
+            const auto refl = fmaxf(bounce_coeff.x, fmaxf(bounce_coeff.y, bounce_coeff.z));
+            return fminf(refl_factor * refl, 1.f);// * expf(-bounce*bounce_factor);
+        }
     }
 
     __global__ void path_sampler_kernel(
@@ -90,7 +98,7 @@ namespace Xrender {
                     else
                     {
                         // Russion roulette : does current ray worht the cost ?
-                        const float roulette_prob = russian_roulette_prob(bounce_coeff);
+                        const float roulette_prob = russian_roulette_prob(bounce, bounce_coeff);
 
                         if (curand_uniform(&rand_state) < roulette_prob)
                         {
