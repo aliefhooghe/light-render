@@ -17,6 +17,7 @@ namespace Xrender
 
     void camera_update_rotation(camera& cam, float theta, float phi);
     void camera_update_pos_forward(camera& cam, float distance);
+    void camera_update_pos_lateral(camera& cam, float distance);
 
 }
 

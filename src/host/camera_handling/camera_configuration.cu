@@ -63,4 +63,16 @@ namespace Xrender
             cam._rotation_sin_theta
         };
     }
+
+    void camera_update_pos_lateral(camera& cam, float distance)
+    {
+        const float3 z{0.f, 0.f, 1.f};
+        const auto cam_dir = float3{
+            -cam._rotation_cos_theta * cam._rotation_sin_phi,
+            cam._rotation_cos_theta * cam._rotation_cos_phi,
+            cam._rotation_sin_theta
+        };
+        const auto lateral_dir = normalized(cross(cam_dir, z));
+        cam._position += distance * lateral_dir;
+    }
 }

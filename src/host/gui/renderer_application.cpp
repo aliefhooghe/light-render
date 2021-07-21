@@ -197,23 +197,19 @@ namespace Xrender
                 break;
 
             case SDLK_z:
-                _renderer->camera_move(0, move_step, 0);
-                break;
-
-            case SDLK_a:
                 _renderer->camera_move_forward(move_step);
                 break;
 
             case SDLK_s:
-                _renderer->camera_move(0, -move_step, 0);
+                _renderer->camera_move_forward(-move_step);
                 break;
 
             case SDLK_q:
-                _renderer->camera_move(-move_step, 0, 0);
+                _renderer->camera_move_lateral(-move_step);
                 break;
 
             case SDLK_d:
-                _renderer->camera_move(move_step, 0, 0);
+                _renderer->camera_move_lateral(move_step);
                 break;
 
             case SDLK_SPACE:

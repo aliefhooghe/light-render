@@ -39,6 +39,7 @@ namespace Xrender
         void scale_focal_length(bool up, float factor);
         void camera_move(float dx, float dy, float dz);
         void camera_move_forward(float distance);
+        void camera_move_lateral(float distance);
         void camera_rotate(float theta, float phi);
 
         void integrate_for(const std::chrono::milliseconds &max_duration);
@@ -191,6 +192,12 @@ namespace Xrender
     void renderer_frontend_implementation::camera_move_forward(float distance)
     {
         camera_update_pos_forward(_camera, distance);
+        _reset_current_renderer();
+    }
+
+    void renderer_frontend_implementation::camera_move_lateral(float distance)
+    {
+        camera_update_pos_lateral(_camera, distance);
         _reset_current_renderer();
     }
 
@@ -370,9 +377,14 @@ namespace Xrender
         _implementation->camera_move(dx, dy, dz);
     }
 
-    void renderer_frontend::camera_move_forward(float distances)
+    void renderer_frontend::camera_move_forward(float distance)
     {
-        _implementation->camera_move_forward(distances);
+        _implementation->camera_move_forward(distance);
+    }
+
+    void renderer_frontend::camera_move_lateral(float distance)
+    {
+        _implementation->camera_move_lateral(distance);
     }
 
     void renderer_frontend::camera_rotate(float theta, float phi)
