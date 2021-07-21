@@ -31,7 +31,7 @@ namespace Xrender
             GLuint texture_id);
         ~renderer_frontend_implementation() noexcept;
 
-        void scale_sensor_lens_distance(float factor);
+        void scale_sensor_lens_distance(bool up, float factor);
         void integrate_for(const std::chrono::milliseconds &max_duration);
         void develop_image();
         std::vector<rgb24> get_image();
@@ -125,8 +125,13 @@ namespace Xrender
             return;
         _renderers[_current_renderer].reset();
     }
-    void renderer_frontend_implementation::scale_sensor_lens_distance(float factor)
+    void renderer_frontend_implementation::scale_sensor_lens_distance(bool up, float factor)
     {
+        if (up)
+            _camera._sensor_lens_distance *= factor;
+        else
+            _camera._sensor_lens_distance /= factor;
+        _reset_current_renderer();
     }
 
     void renderer_frontend_implementation::integrate_for(const std::chrono::milliseconds &max_duration)
@@ -282,9 +287,9 @@ namespace Xrender
             delete _implementation;
     }
 
-    void renderer_frontend::scale_sensor_lens_distance(float factor)
+    void renderer_frontend::scale_sensor_lens_distance(bool up, float factor)
     {
-        _implementation->scale_sensor_lens_distance(factor);
+        _implementation->scale_sensor_lens_distance(up, factor);
     }
 
     void renderer_frontend::integrate_for(const std::chrono::milliseconds &max_duration)

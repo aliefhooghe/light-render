@@ -26,12 +26,12 @@ namespace Xrender
     public:
         class setting
         {
-            using set_callback = std::function<void(float)>;
+            using set_callback = std::function<void(bool)>;
         public:
             setting(const std::string& n, set_callback c)
             : _name{n}, _callback{c}
             {}
-            void set(float normalized_value) const { _callback(normalized_value); }
+            void scale(bool up) const { _callback(up); }
             const std::string& name() const { return _name; }
         private:
             const std::string _name;
@@ -67,7 +67,7 @@ namespace Xrender
         /**
          *      Camera api
          */
-        void scale_sensor_lens_distance(float factor);
+        void scale_sensor_lens_distance(bool up, float factor);
         // void scale_focal_length(float factor);
 
         /**

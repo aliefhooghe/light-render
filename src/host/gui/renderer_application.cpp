@@ -104,15 +104,70 @@ namespace Xrender
         std::cout << "\nSwitch to developer " << next_developer_desc.name() << std::endl;
     }
 
+    void renderer_application::_next_control_mode()
+    {
+        std::cout << "\nSwitch to control mode : ";
+
+        switch (_control_mode)
+        {
+        case control_mode::CAMERA_SETTINGS:
+            std::cout << "Developer" << std::endl;
+            _control_mode = control_mode::DEVELOPER_SETTINGS;
+            break;
+        case control_mode::DEVELOPER_SETTINGS:
+            std::cout << "Renderer" << std::endl;
+            _control_mode = control_mode::RENDERER_SETTINGS;
+            break;
+        case control_mode::RENDERER_SETTINGS:
+            std::cout << "Camera" << std::endl;
+            _control_mode = control_mode::CAMERA_SETTINGS;
+            break;
+        default:
+            break;
+        }
+    }
+
+    void renderer_application::_next_worker_setting()
+    {
+        if (_control_mode != control_mode::CAMERA_SETTINGS)
+        {
+            const auto& worker = _get_current_control_worker();
+            const auto& worker_settings = worker.settings();
+            const auto setting_count = worker_settings.size();
+
+            if (setting_count > 0) {
+                _control_setting_id = (_control_setting_id + 1) % setting_count;
+                std::cout << "\nSwitched to control setting : " << worker.name()
+                        <<  " - " << worker_settings[_control_setting_id].name() << std::endl;
+            }
+        }
+    }
+
+    const renderer_frontend::worker_descriptor& renderer_application::_get_current_control_worker()
+    {
+        return
+            _control_mode == control_mode::DEVELOPER_SETTINGS ?
+                _renderer->get_developer_descriptor(_renderer->get_current_developer()) :
+                _renderer->get_renderer_descriptor(_renderer->get_current_renderer());
+    }
+
     void renderer_application::_handle_key_down(SDL_Keysym key)
     {
         switch (key.sym)
         {
+            case SDLK_TAB:
+                _next_worker_setting();
+                break;
+
+            case SDLK_PAGEUP:
+                _next_control_mode();
+                break;
+
             case SDLK_RETURN:
                 _next_renderer();
                 break;
 
-            case SDLK_TAB:
+            case SDLK_RSHIFT:
                 _next_developer();
                 break;
 
@@ -128,7 +183,21 @@ namespace Xrender
 
     void renderer_application::_handle_mouse_wheel(bool up)
     {
+        if (_control_mode == control_mode::CAMERA_SETTINGS)
+        {
+            _renderer->scale_sensor_lens_distance(up, 1.001f);
+        }
+        else
+        {
+            const auto& worker = _get_current_control_worker();
+            const auto& worker_settings = worker.settings();
+            const auto setting_count = worker_settings.size();
 
+            if (_control_setting_id < setting_count)
+            {
+                worker_settings[_control_setting_id].scale(up);
+            }
+        }
     }
 
     bool renderer_application::_handle_events()

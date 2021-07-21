@@ -21,5 +21,6 @@ int main(int argc, char **argv)
 
     app.execute();
 
+    std::cout << "\nQuiting..." << std::endl;
     return 0;
 }

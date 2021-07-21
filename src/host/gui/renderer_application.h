@@ -24,11 +24,17 @@ namespace Xrender {
 
         void _next_renderer();
         void _next_developer();
+        void _next_control_mode();
+        void _next_worker_setting();
+
+        const renderer_frontend::worker_descriptor& _get_current_control_worker();
+
         void _handle_key_down(SDL_Keysym key);
         void _handle_mouse_wheel(bool up);
         bool _handle_events();
         void _draw();
         void _update_size();
+
         void _switch_fast_mode();
         void _save_current_image();
 
@@ -37,6 +43,16 @@ namespace Xrender {
         GLuint _texture{0u};
         std::unique_ptr<renderer_frontend> _renderer;
         bool _fast_mode{false};
+
+        // control mode
+        enum class control_mode {
+            CAMERA_SETTINGS,
+            DEVELOPER_SETTINGS,
+            RENDERER_SETTINGS
+        };
+
+        control_mode _control_mode{control_mode::CAMERA_SETTINGS};
+        std::size_t _control_setting_id{0u};
     };
 }
 
