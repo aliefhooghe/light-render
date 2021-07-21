@@ -159,7 +159,7 @@ namespace Xrender
                 _next_worker_setting();
                 break;
 
-            case SDLK_PAGEUP:
+            case SDLK_c:
                 _next_control_mode();
                 break;
 

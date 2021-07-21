@@ -19,6 +19,8 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/renderer_manager.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/average_image_developer.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/average_image_developer.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/gamma_image_developer.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/gamma_image_developer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/bvh_tree_traversal.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/bvh_tree.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/camera.cu

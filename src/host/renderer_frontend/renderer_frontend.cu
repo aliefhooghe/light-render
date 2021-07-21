@@ -3,6 +3,7 @@
 #include "gpu/common/gpu_texture.cuh"
 #include "gpu/common/renderer_manager.cuh"
 #include "gpu/image_developers/average_image_developer.cuh"
+#include "gpu/image_developers/gamma_image_developer.cuh"
 #include "gpu/model/bvh_tree.cuh"
 #include "gpu/model/camera.cuh"
 #include "gpu/renderers/naive_mc_renderer.cuh"
@@ -85,19 +86,42 @@ namespace Xrender
     {
         _device_tree = clone_to_device(gpu_tree);
 
-        auto average_developer = std::make_unique<average_image_developer>();
-        auto *average_dev = average_developer.get();
+        // Add average developer
+        {
+            auto average_developer = std::make_unique<average_image_developer>();
+            auto *average_dev = average_developer.get();
 
-        _add_image_developer(
-            {
-                "Average Developer",
+            _add_image_developer(
                 {
+                    "Average Developer",
                     {
-                        "Factor", [average_dev](bool up) { average_dev->scale_factor(up); }
+                        {
+                            "Factor", [average_dev](bool up) { average_dev->scale_factor(up); }
+                        }
                     }
-                }
-            },
-            std::move(average_developer));
+                },
+                std::move(average_developer));
+        }
+
+        // Add gamma developer
+        {
+            auto gamma_developer = std::make_unique<gamma_image_developer>();
+            auto *gamma_dev = gamma_developer.get();
+
+            _add_image_developer(
+                {
+                    "Gamma developer",
+                    {
+                        {
+                            "Factor", [gamma_dev](bool up) { gamma_dev->scale_factor(up); }
+                        },
+                        {
+                            "Gamma",  [gamma_dev](bool up) { gamma_dev->scale_gamma(up); }
+                        }
+                    }
+                },
+                std::move(gamma_developer));
+        }
 
         _add_renderer(
             {"Preview", {}},
