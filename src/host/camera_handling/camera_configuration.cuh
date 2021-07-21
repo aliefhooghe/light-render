@@ -14,6 +14,10 @@ namespace Xrender
      */
     void camera_update_focal_length(camera &, bool up, float factor);
 
+
+    void camera_update_rotation(camera& cam, float theta, float phi);
+    void camera_update_pos_forward(camera& cam, float distance);
+
 }
 
 #endif

@@ -31,11 +31,13 @@ namespace Xrender {
 
         void _handle_key_down(SDL_Keysym key);
         void _handle_mouse_wheel(bool up);
+        void _handle_mouse_motion(int xrel, int yrel);
         bool _handle_events();
         void _draw();
         void _update_size();
 
         void _switch_fast_mode();
+        void _switch_rotation();
         void _save_current_image();
 
         SDL_Window *_window{nullptr};
@@ -60,6 +62,10 @@ namespace Xrender {
         control_mode _control_mode{control_mode::CAMERA_SETTINGS};
         camera_setting _camera_setting{camera_setting::SENSOR_LENS_DISTANCE};
         std::size_t _control_setting_id{0u};
+        bool _freeze_camera_rotation{true};
+
+        float _camera_theta{0.f};
+        float _camera_phi{0.f};
     };
 }
 

@@ -21,12 +21,14 @@ namespace Xrender {
                 -signed_py * _pixel_size
             };
 
-            const auto org_pos = _sample_lens_point(state);
-
-            const auto start_dir = normalized((_focal_length / _sensor_lens_distance - 1.f) * org_pos -
+            // In default coordinates
+            const auto start_pos = _sample_lens_point(state);
+            const auto start_dir = normalized((_focal_length / _sensor_lens_distance - 1.f) * start_pos -
                               (_focal_length / _sensor_lens_distance) * pixel_origin);
-            pos = org_pos + _position;
-            return start_dir;
+
+            // Transpose to camera
+            pos = rotate(start_pos) + _position;
+            return rotate(start_dir);
         }
 
         __device__ float3 _sample_lens_point(curandState *state) const
@@ -45,13 +47,49 @@ namespace Xrender {
             return 2 * _image_pixel_half_height;
         }
 
+        __device__ float3 translate(const float3& vec) const
+        {
+            return _position + vec;
+        }
+
+        __device__ float3 rotate(const float3& vec) const
+        {
+            //  vertical rotate around x
+            const float3 tmp1 = {
+                vec.x,
+                _rotation_cos_theta * vec.y - _rotation_sin_theta * vec.z,
+                _rotation_sin_theta * vec.y + _rotation_cos_theta * vec.z
+            };
+
+
+            //  horizontal rotate around z
+            const float3 tmp2 =
+            {
+                _rotation_cos_phi * tmp1.x - _rotation_sin_phi * tmp1.y,
+                _rotation_sin_phi * tmp1.x + _rotation_cos_phi * tmp1.y,
+                tmp1.z
+            };
+
+            return tmp2;
+        }
+
         int _image_pixel_half_width;
         int _image_pixel_half_height;
         float _pixel_size;             // real size of a sensor pixel
         float _focal_length;
         float _sensor_lens_distance;
         float _diaphragm_radius;
+
+        // camera position in the space
         float3 _position{0.f, 0.f, 0.f};
+
+        // camera vertical rotation
+        float _rotation_cos_theta{1.f};
+        float _rotation_sin_theta{0.f};
+
+        // horizontal rotation
+        float _rotation_cos_phi{1.f};
+        float _rotation_sin_phi{0.f};
     };
 
 }

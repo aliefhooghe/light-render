@@ -172,7 +172,7 @@ namespace Xrender
 
     void renderer_application::_handle_key_down(SDL_Keysym key)
     {
-        constexpr auto move_step = 0.3f;
+        constexpr auto move_step = 0.1f;
 
         switch (key.sym)
         {
@@ -192,27 +192,27 @@ namespace Xrender
                 _next_developer();
                 break;
 
-            // case SDLK_SPACE:
-            //     _switch_fast_mode();
-            //     break;
-
-            case SDLK_s:
+            case SDLK_ESCAPE:
                 _save_current_image();
                 break;
 
-            case SDLK_UP:
+            case SDLK_z:
                 _renderer->camera_move(0, move_step, 0);
                 break;
 
-            case SDLK_DOWN:
+            case SDLK_a:
+                _renderer->camera_move_forward(move_step);
+                break;
+
+            case SDLK_s:
                 _renderer->camera_move(0, -move_step, 0);
                 break;
 
-            case SDLK_LEFT:
+            case SDLK_q:
                 _renderer->camera_move(-move_step, 0, 0);
                 break;
 
-            case SDLK_RIGHT:
+            case SDLK_d:
                 _renderer->camera_move(move_step, 0, 0);
                 break;
 
@@ -222,6 +222,10 @@ namespace Xrender
 
             case SDLK_w:
                 _renderer->camera_move(0, 0, -move_step);
+                break;
+
+            case SDLK_r:
+                _switch_rotation();
                 break;
         }
     }
@@ -257,15 +261,27 @@ namespace Xrender
         }
     }
 
+    void renderer_application::_handle_mouse_motion(int xrel, int yrel)
+    {
+        if (!_freeze_camera_rotation)
+        {
+            constexpr auto factor = 0.001f;
+            _camera_phi -= factor * xrel;
+            _camera_theta -= factor * yrel;
+            _renderer->camera_rotate(_camera_theta, _camera_phi);
+        }
+    }
+
     bool renderer_application::_handle_events()
     {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type)
             {
-                case SDL_KEYDOWN:    _handle_key_down(event.key.keysym); break;
-                case SDL_MOUSEWHEEL: _handle_mouse_wheel(event.wheel.y > 0); break;
-                case SDL_QUIT:       return true; break;
+                case SDL_KEYDOWN:       _handle_key_down(event.key.keysym); break;
+                case SDL_MOUSEWHEEL:    _handle_mouse_wheel(event.wheel.y > 0); break;
+                case SDL_MOUSEMOTION:   _handle_mouse_motion(event.motion.xrel, event.motion.yrel); break;
+                case SDL_QUIT:          return true; break;
 
                 case SDL_WINDOWEVENT:
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED)
@@ -317,6 +333,14 @@ namespace Xrender
     {
         _fast_mode = !_fast_mode;
         std::cout << "\n" <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
+    }
+
+    void renderer_application::_switch_rotation()
+    {
+        _freeze_camera_rotation = !_freeze_camera_rotation;
+        std::cout << "\nEnable camera rotation : " << (_freeze_camera_rotation ? "Off" : "On") << std::endl;
+        SDL_SetWindowGrab(_window, static_cast<SDL_bool>(!_freeze_camera_rotation));
+        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(!_freeze_camera_rotation));
     }
 
     void renderer_application::_save_current_image()

@@ -46,4 +46,21 @@ namespace Xrender
         cam._focal_length *= (up ? factor : (1.f/factor));
         cam._sensor_lens_distance = sensor_lens_dist(cam._focal_length, focus_distance2);
     }
+
+    void camera_update_rotation(camera& cam, float theta, float phi)
+    {
+        cam._rotation_cos_theta = cosf(theta);
+        cam._rotation_sin_theta = sinf(theta);
+        cam._rotation_cos_phi = cosf(phi);
+        cam._rotation_sin_phi = sinf(phi);
+    }
+
+    void camera_update_pos_forward(camera& cam, float distance)
+    {
+        cam._position += distance * float3{
+            -cam._rotation_cos_theta * cam._rotation_sin_phi,
+            cam._rotation_cos_theta * cam._rotation_cos_phi,
+            cam._rotation_sin_theta
+        };
+    }
 }

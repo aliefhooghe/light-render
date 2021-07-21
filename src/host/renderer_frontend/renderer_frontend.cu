@@ -1,4 +1,6 @@
 
+#include <math.h>
+
 #include "gpu/common/abstract_image_developer.cuh"
 #include "gpu/common/gpu_texture.cuh"
 #include "gpu/common/renderer_manager.cuh"
@@ -36,6 +38,8 @@ namespace Xrender
         void scale_sensor_lens_distance(bool up, float factor);
         void scale_focal_length(bool up, float factor);
         void camera_move(float dx, float dy, float dz);
+        void camera_move_forward(float distance);
+        void camera_rotate(float theta, float phi);
 
         void integrate_for(const std::chrono::milliseconds &max_duration);
         void develop_image();
@@ -183,6 +187,20 @@ namespace Xrender
         _camera._position += float3{dx, dy, dz};
         _reset_current_renderer();
     }
+
+    void renderer_frontend_implementation::camera_move_forward(float distance)
+    {
+        camera_update_pos_forward(_camera, distance);
+        _reset_current_renderer();
+    }
+
+    void renderer_frontend_implementation::camera_rotate(float theta, float phi)
+    {
+        camera_update_rotation(_camera, theta, phi);
+        _reset_current_renderer();
+    }
+
+
 
     void renderer_frontend_implementation::integrate_for(const std::chrono::milliseconds &max_duration)
     {
@@ -350,6 +368,16 @@ namespace Xrender
     void renderer_frontend::camera_move(float dx, float dy, float dz)
     {
         _implementation->camera_move(dx, dy, dz);
+    }
+
+    void renderer_frontend::camera_move_forward(float distances)
+    {
+        _implementation->camera_move_forward(distances);
+    }
+
+    void renderer_frontend::camera_rotate(float theta, float phi)
+    {
+        _implementation->camera_rotate(theta, phi);
     }
 
     void renderer_frontend::integrate_for(const std::chrono::milliseconds &max_duration)
