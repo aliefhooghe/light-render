@@ -11,13 +11,13 @@
 namespace Xrender
 {
 
-    class gpu_texture
+    class registered_texture
     {
 
     public:
         class mapped_surface
         {
-            friend class gpu_texture;
+            friend class registered_texture;
 
         public:
             mapped_surface(const mapped_surface &) = delete;
@@ -27,18 +27,18 @@ namespace Xrender
             __host__ cudaSurfaceObject_t surface() const noexcept;
 
         private:
-            __host__ mapped_surface(gpu_texture &);
+            __host__ mapped_surface(registered_texture &);
 
-            gpu_texture *_texture;
+            registered_texture *_texture;
             cudaSurfaceObject_t _surface_object;
         };
 
         friend class mapped_surface;
 
-        __host__ gpu_texture(unsigned int width, unsigned int height);
-        gpu_texture(const gpu_texture &) = delete;
-        gpu_texture(gpu_texture &&) noexcept = delete; // todo
-        __host__ ~gpu_texture() noexcept;
+        __host__ registered_texture(GLuint texture_id, unsigned int width, unsigned int height);
+        registered_texture(const registered_texture &) = delete;
+        registered_texture(registered_texture &&) noexcept = delete; // todo
+        __host__ ~registered_texture() noexcept;
 
         __host__ unsigned int get_width() const noexcept;
         __host__ unsigned int get_height() const noexcept;

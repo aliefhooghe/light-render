@@ -8,7 +8,7 @@
 #include "abstract_renderer.cuh"
 #include "abstract_image_developer.cuh"
 #include "gpu/model/camera.cuh"
-#include "gpu/gui/gpu_texture.cuh"
+#include "gpu/common/gpu_texture.cuh"
 
 namespace Xrender {
 
@@ -16,30 +16,23 @@ namespace Xrender {
     {
 
     public:
-        renderer_manager(
-            const camera &cam,
-            std::unique_ptr<abstract_renderer>&& renderer,
-            std::unique_ptr<abstract_image_developer>&& developer);
+        renderer_manager(const camera &cam, std::unique_ptr<abstract_renderer>&& renderer);
         renderer_manager(const renderer_manager&) = delete;
         renderer_manager(renderer_manager&&) noexcept;
         ~renderer_manager() noexcept;
 
         void reset();
-        void integrate();
+        void integrate_for(const std::chrono::milliseconds& max_duration);
 
-        void develop_to_texture(gpu_texture& texture);
-        std::vector<float4> develop_to_host();
-
-        void set_interval(std::chrono::milliseconds interval);
+        std::size_t get_total_sample_count() const noexcept { return _total_sample_count; }
+        const float3 *get_device_sensor() const noexcept { return _device_sensor; }
 
     private:
-        void _render_integrate_step();
+        void _render_integrate_step(std::size_t sample_count);
 
         std::unique_ptr<abstract_renderer> _renderer{nullptr};
-        std::unique_ptr<abstract_image_developer> _developer{nullptr};
 
-        std::size_t _sample_per_step{10u};
-        std::chrono::milliseconds _interval{100}; // 10 fps
+        float _speed{1.f}; // spp/sec
         std::size_t _total_sample_count{0u};
         const camera& _camera;
 

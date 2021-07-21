@@ -9,7 +9,6 @@
 
 namespace Xrender
 {
-
     struct host_bvh_tree
     {
         using leaf = face;
@@ -23,9 +22,6 @@ namespace Xrender
         node left_child{};
         node right_child{};
     };
-
-
-
 }
 
 #endif /* XRENDER_HOST8BVH_TREE_H_ */

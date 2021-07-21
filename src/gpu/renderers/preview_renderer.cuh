@@ -2,11 +2,10 @@
 #ifndef PREVIEW_RENDERER_H_
 #define PREVIEW_RENDERER_H_
 
-#include "gpu/gui/gpu_texture.cuh"
+#include "gpu/common/abstract_renderer.cuh"
+#include "gpu/common/gpu_texture.cuh"
 #include "gpu/model/bvh_tree.cuh"
 #include "gpu/model/camera.cuh"
-
-#include "gpu/gui/abstract_renderer.cuh"
 
 namespace Xrender
 {

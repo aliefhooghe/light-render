@@ -12,13 +12,11 @@ find_package(GLEW REQUIRED)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(xrender
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/abstract_renderer.cuh
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/gpu_texture.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/gpu_texture.cuh
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_display.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_display.cuh
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_manager.cu
-    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/gui/renderer_manager.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/abstract_renderer.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/gpu_texture.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/gpu_texture.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/renderer_manager.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/renderer_manager.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/average_image_developer.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/image_developers/average_image_developer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/model/bvh_tree_traversal.cuh
@@ -64,10 +62,17 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cuh
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/renderer_frontend.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/renderer_frontend.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/main.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
 )
 
 target_link_libraries(xrender PUBLIC
-    SDL2::SDL2 OpenGL::GL OpenGL::GLU GLEW::GLEW)
+    SDL2::SDL2
+    OpenGL::GL
+    OpenGL::GLU
+    GLEW::GLEW)

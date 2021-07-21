@@ -6,7 +6,7 @@
 namespace Xrender
 {
 
-    gpu_texture::mapped_surface::mapped_surface(gpu_texture& texture)
+    registered_texture::mapped_surface::mapped_surface(registered_texture& texture)
     :   _texture{&texture}
     {
         cudaArray_t array;
@@ -21,14 +21,14 @@ namespace Xrender
         CUDA_CHECK(cudaCreateSurfaceObject(&_surface_object, &resource_desc));
     }
 
-    gpu_texture::mapped_surface::mapped_surface(gpu_texture::mapped_surface&& other) noexcept
+    registered_texture::mapped_surface::mapped_surface(registered_texture::mapped_surface&& other) noexcept
     :   _texture{other._texture},
         _surface_object{other._surface_object}
     {
         other._texture = nullptr;
     }
 
-    __host__ gpu_texture::mapped_surface::~mapped_surface() noexcept
+    __host__ registered_texture::mapped_surface::~mapped_surface() noexcept
     {
         if (_texture != nullptr) {
             CUDA_WARNING(cudaDestroySurfaceObject(_surface_object));
@@ -36,54 +36,44 @@ namespace Xrender
         }
     }
 
-    __host__ cudaSurfaceObject_t gpu_texture::mapped_surface::surface() const noexcept
+    __host__ cudaSurfaceObject_t registered_texture::mapped_surface::surface() const noexcept
     {
         return _surface_object;
     }
 
-    __host__ gpu_texture::gpu_texture(unsigned int width, unsigned int height)
-        : _width{width}, _height{height}
+    __host__ registered_texture::registered_texture(GLuint texture_id, unsigned int width, unsigned int height)
+        : _width{width}, _height{height}, _gl_id{texture_id}
     {
-        glGenTextures(1, &_gl_id);
-        glBindTexture(GL_TEXTURE_2D, _gl_id);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, _width, _height, 0, GL_RGBA, GL_FLOAT, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glEnable(GL_TEXTURE_2D);
-
-        CUDA_CHECK(cudaGetLastError())
-
         CUDA_CHECK(cudaGraphicsGLRegisterImage(
             &_graphic_resource, _gl_id, GL_TEXTURE_2D, cudaGraphicsRegisterFlagsNone));
     }
 
-    __host__ gpu_texture::~gpu_texture() noexcept
+    __host__ registered_texture::~registered_texture() noexcept
     {
         CUDA_WARNING(cudaGraphicsUnregisterResource(_graphic_resource));
-        glDeleteTextures(1, &_gl_id);
     }
 
-    __host__ unsigned int gpu_texture::get_width() const noexcept
+    __host__ unsigned int registered_texture::get_width() const noexcept
     {
         return _width;
     }
 
-    __host__ unsigned int gpu_texture::get_height() const noexcept
+    __host__ unsigned int registered_texture::get_height() const noexcept
     {
         return _height;
     }
 
-    __host__ GLuint gpu_texture::get_gl_texture_id() const noexcept
+    __host__ GLuint registered_texture::get_gl_texture_id() const noexcept
     {
         return _gl_id;
     }
 
-    __host__ gpu_texture::mapped_surface gpu_texture::get_mapped_surface()
+    __host__ registered_texture::mapped_surface registered_texture::get_mapped_surface()
     {
         return mapped_surface{*this};
     }
 
-    __host__ std::vector<float4> gpu_texture::retrieve_texture()
+    __host__ std::vector<float4> registered_texture::retrieve_texture()
     {
         std::vector<float4> host_texture{_width * _height};
         cudaArray_t array;

@@ -33,12 +33,12 @@ namespace Xrender {
             return _diaphragm_radius * float3{pos2d.x, 0.f, pos2d.y};
         }
 
-        __device__ __host__ std::size_t get_image_width() const
+        __device__ __host__ unsigned int get_image_width() const
         {
             return 2 * _image_pixel_half_width;
         }
 
-        __device__ __host__ std::size_t get_image_height() const
+        __device__ __host__ unsigned int get_image_height() const
         {
             return 2 * _image_pixel_half_height;
         }

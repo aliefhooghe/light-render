@@ -1,7 +1,7 @@
 #ifndef XRENDER_AVERAGE_IMAGE_DEVELOPPER_H_
 #define XRENDER_AVERAGE_IMAGE_DEVELOPPER_H_
 
-#include "gpu/gui/abstract_image_developer.cuh"
+#include "gpu/common/abstract_image_developer.cuh"
 
 namespace Xrender
 {

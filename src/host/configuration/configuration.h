@@ -17,7 +17,7 @@ namespace Xrender
 
     struct render_configuration
     {
-        std::filesystem::path model_path{"model.obj"};
+        std::filesystem::path model_path{""};
         camera_configuration camera_config{};
     };
 

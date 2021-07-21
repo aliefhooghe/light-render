@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "gpu/model/bvh_tree.cuh"
-#include "gpu/gui/abstract_renderer.cuh"
+#include "gpu/common/abstract_renderer.cuh"
 
 namespace Xrender
 {
