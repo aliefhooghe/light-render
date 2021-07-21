@@ -34,6 +34,15 @@ namespace Xrender
     {
     }
 
+    void average_image_developer::scale_factor(bool up)
+    {
+        constexpr auto factor = 1.02;
+        if (up)
+            _factor *= factor;
+        else
+            _factor /= factor;
+    }
+
     void average_image_developer::call_develop_to_texture_kernel(
         std::size_t total_sample_count,
         const unsigned int sensor_width, const unsigned int sensor_height,

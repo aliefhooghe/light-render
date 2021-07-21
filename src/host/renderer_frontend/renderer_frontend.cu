@@ -85,9 +85,19 @@ namespace Xrender
     {
         _device_tree = clone_to_device(gpu_tree);
 
+        auto average_developer = std::make_unique<average_image_developer>();
+        auto *average_dev = average_developer.get();
+
         _add_image_developer(
-            {"Average Developer", {}},
-            std::make_unique<average_image_developer>());
+            {
+                "Average Developer",
+                {
+                    {
+                        "Factor", [average_dev](bool up) { average_dev->scale_factor(up); }
+                    }
+                }
+            },
+            std::move(average_developer));
 
         _add_renderer(
             {"Preview", {}},
