@@ -13,6 +13,7 @@
 #include "gpu/utils/gpu_vector_copy.cuh"
 #include "host/bvh_builder/bvh_builder.cuh"
 #include "host/camera_handling/camera_configuration.cuh"
+#include "host/camera_handling/camera_configuration.cuh"
 #include "host/model_loader/wavefront_obj.cuh"
 #include "host/utils/chronometer.h"
 #include "renderer_frontend.h"
@@ -33,6 +34,9 @@ namespace Xrender
         ~renderer_frontend_implementation() noexcept;
 
         void scale_sensor_lens_distance(bool up, float factor);
+        void scale_focal_length(bool up, float factor);
+        void camera_move(float dx, float dy, float dz);
+
         void integrate_for(const std::chrono::milliseconds &max_duration);
         void develop_image();
         std::vector<rgb24> get_image();
@@ -165,6 +169,18 @@ namespace Xrender
             _camera._sensor_lens_distance *= factor;
         else
             _camera._sensor_lens_distance /= factor;
+        _reset_current_renderer();
+    }
+
+    void renderer_frontend_implementation::scale_focal_length(bool up, float factor)
+    {
+        camera_update_focal_length(_camera, up, factor);
+        _reset_current_renderer();
+    }
+
+    void renderer_frontend_implementation::camera_move(float dx, float dy, float dz)
+    {
+        _camera._position += float3{dx, dy, dz};
         _reset_current_renderer();
     }
 
@@ -324,6 +340,16 @@ namespace Xrender
     void renderer_frontend::scale_sensor_lens_distance(bool up, float factor)
     {
         _implementation->scale_sensor_lens_distance(up, factor);
+    }
+
+    void renderer_frontend::scale_focal_length(bool up, float factor)
+    {
+        _implementation->scale_focal_length(up, factor);
+    }
+
+    void renderer_frontend::camera_move(float dx, float dy, float dz)
+    {
+        _implementation->camera_move(dx, dy, dz);
     }
 
     void renderer_frontend::integrate_for(const std::chrono::milliseconds &max_duration)

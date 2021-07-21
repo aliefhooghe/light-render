@@ -21,10 +21,12 @@ namespace Xrender {
                 -signed_py * _pixel_size
             };
 
-            pos = _sample_lens_point(state);
+            const auto org_pos = _sample_lens_point(state);
 
-            return normalized((_focal_length / _sensor_lens_distance - 1.f) * pos -
+            const auto start_dir = normalized((_focal_length / _sensor_lens_distance - 1.f) * org_pos -
                               (_focal_length / _sensor_lens_distance) * pixel_origin);
+            pos = org_pos + _position;
+            return start_dir;
         }
 
         __device__ float3 _sample_lens_point(curandState *state) const
@@ -49,6 +51,7 @@ namespace Xrender {
         float _focal_length;
         float _sensor_lens_distance;
         float _diaphragm_radius;
+        float3 _position{0.f, 0.f, 0.f};
     };
 
 }

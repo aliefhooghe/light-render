@@ -25,7 +25,7 @@ namespace Xrender {
         void _next_renderer();
         void _next_developer();
         void _next_control_mode();
-        void _next_worker_setting();
+        void _next_setting();
 
         const renderer_frontend::worker_descriptor& _get_current_control_worker();
 
@@ -51,7 +51,14 @@ namespace Xrender {
             RENDERER_SETTINGS
         };
 
+        enum class camera_setting
+        {
+            SENSOR_LENS_DISTANCE,
+            FOCAL_LENGTH
+        };
+
         control_mode _control_mode{control_mode::CAMERA_SETTINGS};
+        camera_setting _camera_setting{camera_setting::SENSOR_LENS_DISTANCE};
         std::size_t _control_setting_id{0u};
     };
 }

@@ -68,7 +68,8 @@ namespace Xrender
          *      Camera api
          */
         void scale_sensor_lens_distance(bool up, float factor);
-        // void scale_focal_length(float factor);
+        void scale_focal_length(bool up, float factor);
+        void camera_move(float dx, float dy, float dz);
 
         /**
          *

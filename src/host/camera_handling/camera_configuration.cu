@@ -36,10 +36,14 @@ namespace Xrender
         cam._image_pixel_half_height = image_height / 2;
     }
 
-    void camera_update_focal_length(camera &cam, float focal_length)
+    void camera_update_focal_length(camera &cam, bool up, float factor)
     {
         const auto focus_distance = current_focus_distance(cam);
-        cam._focal_length = focal_length;
-        cam._sensor_lens_distance = sensor_lens_dist(focal_length, focus_distance);
+        cam._focal_length *= (up ? factor : (1.f/factor));
+        cam._sensor_lens_distance = sensor_lens_dist(cam._focal_length, focus_distance);
+
+        const auto focus_distance2 = current_focus_distance(cam);
+        cam._focal_length *= (up ? factor : (1.f/factor));
+        cam._sensor_lens_distance = sensor_lens_dist(cam._focal_length, focus_distance2);
     }
 }

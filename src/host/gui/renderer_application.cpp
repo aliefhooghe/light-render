@@ -127,9 +127,28 @@ namespace Xrender
         }
     }
 
-    void renderer_application::_next_worker_setting()
+    void renderer_application::_next_setting()
     {
-        if (_control_mode != control_mode::CAMERA_SETTINGS)
+        if (_control_mode == control_mode::CAMERA_SETTINGS)
+        {
+            std::cout << "\nSwitch to camera setting ";
+            switch (_camera_setting)
+            {
+            case camera_setting::SENSOR_LENS_DISTANCE:
+                std::cout << "focal length" << std::endl;
+                _camera_setting = camera_setting::FOCAL_LENGTH;
+                break;
+
+            case camera_setting::FOCAL_LENGTH:
+                std::cout << "sensor-lens distance" << std::endl;
+                _camera_setting = camera_setting::SENSOR_LENS_DISTANCE;
+                break;
+
+            default:
+                break;
+            }
+        }
+        else
         {
             const auto& worker = _get_current_control_worker();
             const auto& worker_settings = worker.settings();
@@ -153,10 +172,12 @@ namespace Xrender
 
     void renderer_application::_handle_key_down(SDL_Keysym key)
     {
+        constexpr auto move_step = 0.3f;
+
         switch (key.sym)
         {
             case SDLK_TAB:
-                _next_worker_setting();
+                _next_setting();
                 break;
 
             case SDLK_c:
@@ -171,12 +192,36 @@ namespace Xrender
                 _next_developer();
                 break;
 
-            case SDLK_SPACE:
-                _switch_fast_mode();
-                break;
+            // case SDLK_SPACE:
+            //     _switch_fast_mode();
+            //     break;
 
             case SDLK_s:
                 _save_current_image();
+                break;
+
+            case SDLK_UP:
+                _renderer->camera_move(0, move_step, 0);
+                break;
+
+            case SDLK_DOWN:
+                _renderer->camera_move(0, -move_step, 0);
+                break;
+
+            case SDLK_LEFT:
+                _renderer->camera_move(-move_step, 0, 0);
+                break;
+
+            case SDLK_RIGHT:
+                _renderer->camera_move(move_step, 0, 0);
+                break;
+
+            case SDLK_SPACE:
+                _renderer->camera_move(0, 0, move_step);
+                break;
+
+            case SDLK_w:
+                _renderer->camera_move(0, 0, -move_step);
                 break;
         }
     }
@@ -185,7 +230,19 @@ namespace Xrender
     {
         if (_control_mode == control_mode::CAMERA_SETTINGS)
         {
-            _renderer->scale_sensor_lens_distance(up, 1.001f);
+            switch (_camera_setting)
+            {
+            case camera_setting::SENSOR_LENS_DISTANCE:
+                _renderer->scale_sensor_lens_distance(up, 1.0001f);
+                break;
+
+            case camera_setting::FOCAL_LENGTH:
+                _renderer->scale_focal_length(up, 1.01f);
+                break;
+
+            default:
+                break;
+            }
         }
         else
         {
