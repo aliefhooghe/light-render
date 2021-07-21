@@ -21,16 +21,20 @@ namespace Xrender
         const double H = 6.62607015E-34f;     //  planck
         const double C = 299792458.f;         //  light celerity
         const double K = 1.380649E-23f;       //  boltzmann
-        return 1.0E-29f / (
+        return 1.f / (
             wavelength*wavelength*wavelength*wavelength*wavelength * (expf(H * C / (wavelength * K * Tkelvin)) - 1.f));
     }
 
     float3 luminance_by_temperature(const float tkelvin)
     {
+        const float r = wv_luminance_by_temperature(tkelvin, red_wl_micro * 1E-6f);
+        const float g = wv_luminance_by_temperature(tkelvin, green_wl_micro * 1E-6f);
+        const float b = wv_luminance_by_temperature(tkelvin, blue_wl_micro * 1E-6f);
+        const float scale = std::max(r, std::max(g, b));
         return {
-            wv_luminance_by_temperature(tkelvin, red_wl_micro * 1E-6f),
-            wv_luminance_by_temperature(tkelvin, green_wl_micro * 1E-6f),
-            wv_luminance_by_temperature(tkelvin, blue_wl_micro * 1E-6f),
+            r / scale,
+            g / scale,
+            b / scale
         };
     }
 
