@@ -19,7 +19,7 @@ namespace Xrender
         std::string current_mtl_name{};
 
         if (!stream.is_open())
-            throw std::invalid_argument("mtllib path");
+            throw std::invalid_argument("Unable to open material library " + path.generic_string());
 
         for (std::string line; std::getline(stream, line);)
         {
@@ -131,10 +131,11 @@ namespace Xrender
         std::ifstream stream{path};
 
         std::map<std::string, material> material_map{};
+        const auto default_mtl = make_lambertian_materal(float3{0.7, 0.7, 0.7});
         material current_mtl;
 
         if (!stream.is_open())
-            throw std::invalid_argument("obj path");
+            throw std::invalid_argument("Unable to open file " + path.generic_string());
 
         //  Read line by line
         for (std::string line; std::getline(stream, line);)
@@ -196,9 +197,14 @@ namespace Xrender
                     {
                         const auto it = material_map.find(mtl_name);
                         if (it != material_map.end())
+                        {
                             current_mtl = it->second;
+                        }
                         else
+                        {
+                            current_mtl = default_mtl;
                             std::cerr << "OBJ load : Warning mtl " << mtl_name << " not found" << std::endl;
+                        }
                     }
                 }
                 break;
