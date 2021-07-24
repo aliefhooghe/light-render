@@ -24,7 +24,7 @@ namespace Xrender {
             constexpr auto refl_factor = 1.f;
             // constexpr auto bounce_factor = 1.f/30.f;
             const auto refl = fmaxf(bounce_coeff.x, fmaxf(bounce_coeff.y, bounce_coeff.z));
-            return fminf(refl_factor * refl, 1.f);// * expf(-bounce*bounce_factor);
+            return fminf(refl_factor * refl, 0.9f);// * expf(-bounce*bounce_factor);
         }
     }
 
