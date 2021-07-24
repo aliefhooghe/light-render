@@ -19,9 +19,6 @@ namespace Xrender {
         void execute();
 
     private:
-        static constexpr auto fast_interval = 10000u; // 10 s => 0.1 fps
-        static constexpr auto interactive_interval = 60u; // 40 ms => 50 fps
-
         void _next_renderer();
         void _next_developer();
         void _next_control_mode();
@@ -56,7 +53,8 @@ namespace Xrender {
         enum class camera_setting
         {
             SENSOR_LENS_DISTANCE,
-            FOCAL_LENGTH
+            FOCAL_LENGTH,
+            DIAPHRAGM_RADIUS
         };
 
         control_mode _control_mode{control_mode::CAMERA_SETTINGS};

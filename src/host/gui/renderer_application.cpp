@@ -16,6 +16,7 @@ namespace Xrender
     {
         static bool sdl_was_init = false;
         if (!sdl_was_init) {
+            SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
             SDL_Init(SDL_INIT_VIDEO);
             sdl_was_init = true;
         }
@@ -72,7 +73,7 @@ namespace Xrender
         while (!_handle_events())
         {
             const auto render_duration =
-                std::chrono::milliseconds(_fast_mode ? 10000 : 20);
+                std::chrono::milliseconds(_fast_mode ? 10000 : 15);
 
             _renderer->integrate_for(render_duration);
             _renderer->develop_image();
@@ -140,6 +141,11 @@ namespace Xrender
                 break;
 
             case camera_setting::FOCAL_LENGTH:
+                std::cout << "diaphragm radius" << std::endl;
+                _camera_setting = camera_setting::DIAPHRAGM_RADIUS;
+                break;
+
+            case camera_setting::DIAPHRAGM_RADIUS:
                 std::cout << "sensor-lens distance" << std::endl;
                 _camera_setting = camera_setting::SENSOR_LENS_DISTANCE;
                 break;
@@ -182,6 +188,10 @@ namespace Xrender
 
             case SDLK_c:
                 _next_control_mode();
+                break;
+
+            case SDLK_BACKSPACE:
+                _switch_fast_mode();
                 break;
 
             case SDLK_RETURN:
@@ -233,11 +243,15 @@ namespace Xrender
             switch (_camera_setting)
             {
             case camera_setting::SENSOR_LENS_DISTANCE:
-                _renderer->scale_sensor_lens_distance(up, 1.0001f);
+                _renderer->scale_sensor_lens_distance(up, 1.0005f);
                 break;
 
             case camera_setting::FOCAL_LENGTH:
                 _renderer->scale_focal_length(up, 1.01f);
+                break;
+
+            case camera_setting::DIAPHRAGM_RADIUS:
+                _renderer->scale_diaphragm_radius(up, 1.1f);
                 break;
 
             default:
@@ -328,6 +342,8 @@ namespace Xrender
     void renderer_application::_switch_fast_mode()
     {
         _fast_mode = !_fast_mode;
+        if (_fast_mode && !_freeze_camera_rotation)
+            _switch_rotation();
         std::cout << "\n" <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
     }
 

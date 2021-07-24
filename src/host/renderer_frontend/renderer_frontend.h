@@ -69,6 +69,7 @@ namespace Xrender
          */
         void scale_sensor_lens_distance(bool up, float factor);
         void scale_focal_length(bool up, float factor);
+        void scale_diaphragm_radius(bool up, float factor);
         void camera_move(float dx, float dy, float dz);
         void camera_move_forward(float distance);
         void camera_move_lateral(float distance);

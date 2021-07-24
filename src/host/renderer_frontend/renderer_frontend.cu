@@ -37,6 +37,7 @@ namespace Xrender
 
         void scale_sensor_lens_distance(bool up, float factor);
         void scale_focal_length(bool up, float factor);
+        void scale_diaphragm_radius(bool up, float factor);
         void camera_move(float dx, float dy, float dz);
         void camera_move_forward(float distance);
         void camera_move_lateral(float distance);
@@ -180,6 +181,15 @@ namespace Xrender
     void renderer_frontend_implementation::scale_focal_length(bool up, float factor)
     {
         camera_update_focal_length(_camera, up, factor);
+        _reset_current_renderer();
+    }
+
+    void renderer_frontend_implementation::scale_diaphragm_radius(bool up, float factor)
+    {
+        if (up)
+            _camera._diaphragm_radius *= factor;
+        else
+            _camera._diaphragm_radius /= factor;
         _reset_current_renderer();
     }
 
@@ -327,18 +337,19 @@ namespace Xrender
         const auto load_duration = timewatch.stop();
 
         // Create a bvh usable on gpu
-        std::cout << "Model loading last " << load_duration.count() << " ms\nBuild bvh tree (" << model.size() << " faces)" << std::endl;
+        std::cout << "Model loading took " << load_duration.count() << " ms\nBuild bvh tree (" << model.size() << " faces)" << std::endl;
         timewatch.start();
         const auto host_bvh = build_bvh_tree(model);
         const auto gpu_bvh = host_bvh->to_gpu_bvh();
         const auto bvh_build_duration = timewatch.stop();
-        std::cout << "Bvh buld last " << bvh_build_duration.count() << " ms" << std::endl;;
+        std::cout << "Bvh build took " << bvh_build_duration.count() << " ms" << std::endl;;
 
         // Configure camera
         camera cam{};
         configure_camera(configuration.camera_config, cam);
 
-        // Create and configure the frontend configuration
+        // Initialize the frontend implementation
+        std::cout << "Initialize computations" << std::endl;
         auto *implementation =
             new renderer_frontend_implementation{cam, gpu_bvh, texture_id};
 
@@ -370,6 +381,11 @@ namespace Xrender
     void renderer_frontend::scale_focal_length(bool up, float factor)
     {
         _implementation->scale_focal_length(up, factor);
+    }
+
+    void renderer_frontend::scale_diaphragm_radius(bool up, float factor)
+    {
+        _implementation->scale_diaphragm_radius(up, factor);
     }
 
     void renderer_frontend::camera_move(float dx, float dy, float dz)
