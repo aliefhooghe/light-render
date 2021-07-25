@@ -41,7 +41,7 @@ namespace Xrender
                 dir = cam.sample_ray(&rand_state, pos, x, y);
                 if (intersect_ray_bvh(tree, pos, dir, inter))
                     estimator += gpu_preview_color(inter.mtl) *
-                                 fabs(dot(dir, inter.normal));
+                                 -dot(dir, inter.normal);
                 else
                     estimator += float3{0.f, 0.f, 1.f};
             }

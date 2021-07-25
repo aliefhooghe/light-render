@@ -44,7 +44,8 @@ namespace Xrender
             w = 1.f - (u + v);
             inter.pos = pos + t * dir;
             inter.distance = t;
-            inter.normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
+            const auto inter_normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
+            inter.normal = dot(inter_normal, dir) > 0.f ? -inter_normal : inter_normal;
             inter.ab = fa.points[1] - fa.points[0];
             return true;
         }
