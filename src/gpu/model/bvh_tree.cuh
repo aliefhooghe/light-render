@@ -31,7 +31,7 @@ namespace Xrender {
             const float tmax = fminf(fminf(fmaxf(tx1, tx2), fmaxf(ty1, ty2)), fmaxf(tz1, tz2));
 
             distance = tmin;
-            return (tmax >= 0 && tmin < tmax);
+            return (tmax >= 0 && tmin <= tmax);
         }
 
     };
