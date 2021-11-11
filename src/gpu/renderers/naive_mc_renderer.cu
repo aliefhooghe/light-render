@@ -45,6 +45,7 @@ namespace Xrender {
         if (x < width)
         {
             int sample_counter = 0;
+            bvh_traversal_state traversal_state;
             intersection inter;
             auto rand_state = rand_pool[pixel_index];
             float3 estimator = {0.f, 0.f, 0.f};
@@ -58,37 +59,53 @@ namespace Xrender {
             dir = cam.sample_ray(&rand_state, pos, x, y);
             russian_roulette_factor = 1.f;
             brdf_coeff = {1.f, 1.f, 1.f};
+            bvh_traversal_init(traversal_state);
 
             while (sample_counter < sample_count)
             {
-                //  cast a ray
-                if (intersect_ray_bvh(bvh, pos, dir, inter))
+                // Perform a bvh traversal step
+                auto traversal_status =
+                    bvh_traversal_step(traversal_state, bvh, pos, dir, inter);
+
+                if (traversal_status == bvh_traversal_status::IN_PROGRESS)
                 {
-                    float3 next_dir;
-                    const float3 bounce_coeff = sample_brdf(&rand_state, inter, inter.normal, dir, next_dir);
-                    brdf_coeff *= bounce_coeff;
+                    // Continue the bvh traversal
+                    continue;
+                }
+                else
+                {
+                    // bvh traversal finished: prepare next traversal
+                    bvh_traversal_init(traversal_state);
 
-                    if (gpu_mtl_is_source(inter.mtl))
+                    if (traversal_status == bvh_traversal_status::HIT)
                     {
-                        // record ray contribution
-                        estimator += (russian_roulette_factor * brdf_coeff);
-                    }
-                    else
-                    {
-                        // Russion roulette : does current ray worht the cost ?
-                        const float roulette_prob = russian_roulette_prob(bounce, bounce_coeff);
+                        float3 next_dir;
+                        const float3 bounce_coeff = sample_brdf(&rand_state, inter, inter.normal, dir, next_dir);
+                        brdf_coeff *= bounce_coeff;
 
-                        if (curand_uniform(&rand_state) < roulette_prob)
+                        if (gpu_mtl_is_source(inter.mtl))
                         {
-                            // continue the ray
-                            russian_roulette_factor /= roulette_prob;
-                            pos = inter.pos;
-                            dir = next_dir;
-                            bounce++;
-                            continue;
+                            // record ray contribution
+                            estimator += (russian_roulette_factor * brdf_coeff);
+                        }
+                        else
+                        {
+                            // Russion roulette : does current ray worht the cost ?
+                            const float roulette_prob = russian_roulette_prob(bounce, bounce_coeff);
+
+                            if (curand_uniform(&rand_state) < roulette_prob)
+                            {
+                                // continue the ray
+                                russian_roulette_factor /= roulette_prob;
+                                pos = inter.pos;
+                                dir = next_dir;
+                                bounce++;
+                                continue;
+                            }
                         }
                     }
                 }
+                // else: status == NO_HIT
 
                 // start a new ray
                 sample_counter++;
