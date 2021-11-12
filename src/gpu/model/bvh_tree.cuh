@@ -4,7 +4,7 @@
 
 #include <math_constants.h>
 
-#define BVH_MAX_DEPTH (24u)
+#define BVH_MAX_DEPTH (64u)
 
 namespace Xrender {
 

@@ -68,8 +68,12 @@ namespace Xrender
 
     __host__ host_bvh_tree::gpu_compatible_bvh host_bvh_tree::to_gpu_bvh() const
     {
-        if (max_depth() > BVH_MAX_DEPTH)
-            throw std::invalid_argument("Bvh depth is too high for gpu");
+        const auto depth = max_depth();
+        if (depth > BVH_MAX_DEPTH)
+        {
+            std::cout << "Too much depth in tree for gpu: " << depth << std::endl;
+            //throw std::invalid_argument("Bvh depth is too high for gpu");
+        }
 
         std::vector<bvh_node> gpu_tree{};
         std::vector<face> gpu_model{};
@@ -105,7 +109,7 @@ namespace Xrender
 
     __host__ std::size_t host_bvh_tree::max_depth() const noexcept
     {
-        return std::max(
+        return 1 + std::max(
             _node_max_depth(left_child),
             _node_max_depth(right_child)
         );
