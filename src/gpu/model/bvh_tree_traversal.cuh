@@ -39,6 +39,7 @@ namespace Xrender
     static __device__ bvh_traversal_status bvh_traversal_step(
         bvh_traversal_state& state,
         const bvh_node *tree,
+        const face *model,
         const float3& pos, const float3& dir,
         intersection& inter)
     {
@@ -61,12 +62,13 @@ namespace Xrender
             {
                 //  leaf : test a face
                 intersection tmp;
+                const auto leaf_face = model[node.leaf];
 
-                if (intersect_ray_face(node.leaf, pos, dir, tmp) && tmp.distance < state.nearest)
+                if (intersect_ray_face(leaf_face, pos, dir, tmp) && tmp.distance < state.nearest)
                 {
                     state.nearest = tmp.distance;
                     inter = tmp;
-                    inter.mtl = node.leaf.mtl;
+                    inter.mtl = leaf_face.mtl;
                     state.hit = true;
                 }
             }
@@ -82,7 +84,10 @@ namespace Xrender
         }
     }
 
-    static __device__ bool intersect_ray_bvh(const bvh_node *tree, const float3& pos, const float3& dir, intersection& inter)
+    static __device__ bool intersect_ray_bvh(
+        const bvh_node *tree,
+        const face *model,
+        const float3& pos, const float3& dir, intersection& inter)
     {
         //  stack = [0|] (put root on the stack)
         int stack_ptr = 1u;  // pointe au dessus du sommet de la pile;
@@ -108,12 +113,13 @@ namespace Xrender
             else {
                 //  leaf : test a face
                 intersection tmp;
+                const auto leaf_face = model[node.leaf];
 
-                if (intersect_ray_face(node.leaf, pos, dir, tmp) && tmp.distance < neareset)
+                if (intersect_ray_face(leaf_face, pos, dir, tmp) && tmp.distance < neareset)
                 {
                     neareset = tmp.distance;
                     inter = tmp;
-                    inter.mtl = node.leaf.mtl;
+                    inter.mtl = leaf_face.mtl;
                     hit = true;
                 }
             }

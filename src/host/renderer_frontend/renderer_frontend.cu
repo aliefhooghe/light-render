@@ -31,7 +31,7 @@ namespace Xrender
 
         renderer_frontend_implementation(
             camera cam,
-            const std::vector<bvh_node> &gpu_tree,
+            const host_bvh_tree::gpu_compatible_bvh &gpu_bvh,
             GLuint texture_id);
         ~renderer_frontend_implementation() noexcept;
 
@@ -70,6 +70,7 @@ namespace Xrender
 
         camera _camera;
         bvh_node *_device_tree{nullptr};
+        face *_device_model{nullptr};
 
         std::size_t _current_renderer{0u};
         std::size_t _current_developer{0u};
@@ -89,12 +90,13 @@ namespace Xrender
 
     renderer_frontend_implementation::renderer_frontend_implementation(
         camera cam,
-        const std::vector<bvh_node> &gpu_tree,
+        const host_bvh_tree::gpu_compatible_bvh &gpu_bvh,
         GLuint texture_id)
     :   _camera{cam},
         _registered_texture{texture_id, cam.get_image_width(), cam.get_image_height()}
     {
-        _device_tree = clone_to_device(gpu_tree);
+        _device_tree = clone_to_device(gpu_bvh.tree);
+        _device_model = clone_to_device(gpu_bvh.model);
 
         // Add average developer
         {
@@ -135,16 +137,17 @@ namespace Xrender
 
         _add_renderer(
             {"Preview", {}},
-            std::make_unique<preview_renderer>(_device_tree));
+            std::make_unique<preview_renderer>(_device_tree, _device_model));
 
         _add_renderer(
             {"Path Tracer", {}},
-            std::make_unique<naive_mc_renderer>(_device_tree));
+            std::make_unique<naive_mc_renderer>(_device_tree, _device_model));
     }
 
     renderer_frontend_implementation::~renderer_frontend_implementation() noexcept
     {
         CUDA_WARNING(cudaFree(_device_tree));
+        CUDA_WARNING(cudaFree(_device_model));
     }
 
     void renderer_frontend_implementation::_add_renderer(

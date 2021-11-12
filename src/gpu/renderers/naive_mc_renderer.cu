@@ -30,6 +30,7 @@ namespace Xrender {
 
     __global__ void path_sampler_kernel(
         const bvh_node *bvh,
+        const face *model,
         const camera cam,
         const int sample_count,
         curandState_t *rand_pool,
@@ -65,7 +66,7 @@ namespace Xrender {
             {
                 // Perform a bvh traversal step
                 auto traversal_status =
-                    bvh_traversal_step(traversal_state, bvh, pos, dir, inter);
+                    bvh_traversal_step(traversal_state, bvh, model, pos, dir, inter);
 
                 if (traversal_status == bvh_traversal_status::IN_PROGRESS)
                 {
@@ -120,8 +121,12 @@ namespace Xrender {
         }
     }
 
-    naive_mc_renderer::naive_mc_renderer(const bvh_node *device_tree, std::size_t thread_per_block)
+    naive_mc_renderer::naive_mc_renderer(
+        const bvh_node *device_tree,
+        const face *device_model,
+        std::size_t thread_per_block)
     :   _device_tree{device_tree},
+        _device_model{device_model},
         _thread_per_block{thread_per_block}
     {
     }
@@ -134,6 +139,6 @@ namespace Xrender {
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
         path_sampler_kernel<<<grid_dim, thread_per_block>>>(
-            _device_tree, cam, sample_count, rand_pool, sensor);
+            _device_tree, _device_model, cam, sample_count, rand_pool, sensor);
     }
 }

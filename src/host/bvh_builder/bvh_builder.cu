@@ -269,7 +269,7 @@ namespace Xrender
         if (begin + 1 == end)
         {
             // return face as leaf
-            return **begin;
+            return *begin;
         }
         else
         {

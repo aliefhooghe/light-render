@@ -4,8 +4,6 @@
 
 #include <math_constants.h>
 
-#include "face.cuh"
-
 #define BVH_MAX_DEPTH (24u)
 
 namespace Xrender {
@@ -44,7 +42,7 @@ namespace Xrender {
     struct bvh_node {
         enum {LEAF, BOX} type;
         union {
-            face leaf;
+            unsigned int leaf; // face index
             bvh_parent node;
         };
     };

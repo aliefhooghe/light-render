@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "gpu/model/bvh_tree.cuh"
+#include "gpu/model/face.cuh"
 #include "gpu/common/abstract_renderer.cuh"
 
 namespace Xrender
@@ -13,7 +14,8 @@ namespace Xrender
     {
     public:
         __host__ naive_mc_renderer(
-            const bvh_node *_device_tree,
+            const bvh_node *device_tree,
+            const face *device_model,
             std::size_t thread_per_block = 256);
 
         naive_mc_renderer(const naive_mc_renderer &) = delete;
@@ -25,6 +27,7 @@ namespace Xrender
 
     private:
         const bvh_node *_device_tree{nullptr};
+        const face *_device_model{nullptr};
         std::size_t _thread_per_block{};
     };
 

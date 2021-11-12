@@ -14,6 +14,7 @@ namespace Xrender
 {
     __global__ void preview_integrate_kernel(
         const bvh_node *tree,
+        const face *model,
         const camera cam,
         curandState_t *rand_pool,
         const int sample_count,
@@ -39,7 +40,7 @@ namespace Xrender
             for (auto i = 0; i < sample_count; i++)
             {
                 dir = cam.sample_ray(&rand_state, pos, x, y);
-                if (intersect_ray_bvh(tree, pos, dir, inter))
+                if (intersect_ray_bvh(tree, model, pos, dir, inter))
                     estimator += gpu_preview_color(inter.mtl) *
                                  -dot(dir, inter.normal);
                 else
@@ -51,8 +52,9 @@ namespace Xrender
         }
     }
 
-    preview_renderer::preview_renderer(const bvh_node *device_tree, std::size_t thread_per_block)
+    preview_renderer::preview_renderer(const bvh_node *device_tree, const face *device_model, std::size_t thread_per_block)
         : _device_tree{device_tree},
+          _device_model{device_model},
           _thread_per_block{thread_per_block}
     {
     }
@@ -65,6 +67,6 @@ namespace Xrender
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
         preview_integrate_kernel<<<grid_dim, thread_per_block>>>(
-            _device_tree, cam, rand_pool, sample_count, sensor);
+            _device_tree, _device_model, cam, rand_pool, sample_count, sensor);
     }
 }
