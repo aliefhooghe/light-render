@@ -1,17 +1,18 @@
 
 #include <stdexcept>
+#include <iostream>
 #include "host_bvh_tree.cuh"
 
 namespace Xrender
 {
     __host__ static void _push_node(
         std::vector<bvh_node>& gpu_tree,
-        std::vector<face> gpu_model,
+        std::vector<face>& gpu_model,
         const host_bvh_tree::node& host_node);
 
     __host__ static void _push_branch(
         std::vector<bvh_node>& gpu_tree,
-        std::vector<face> gpu_model,
+        std::vector<face>& gpu_model,
         const host_bvh_tree& host_branch)
     {
         // Push root
@@ -34,7 +35,7 @@ namespace Xrender
 
     __host__ static void _push_child(
         std::vector<bvh_node>& gpu_tree,
-        std::vector<face> gpu_model,
+        std::vector<face>& gpu_model,
         const host_bvh_tree::parent& host_parent)
     {
         _push_branch(gpu_tree, gpu_model, *host_parent);
@@ -42,11 +43,11 @@ namespace Xrender
 
     __host__ static void _push_child(
         std::vector<bvh_node>& gpu_tree,
-        std::vector<face> gpu_model,
+        std::vector<face>& gpu_model,
         const host_bvh_tree::leaf& host_leaf)
     {
         // Push face on gpu model
-        const unsigned int leaf_index = gpu_model.size();
+        const int leaf_index = gpu_model.size();
         gpu_model.emplace_back(*host_leaf);
 
         // Push leaf on gpu tree
@@ -58,7 +59,7 @@ namespace Xrender
 
     __host__ static void _push_node(
         std::vector<bvh_node>& gpu_tree,
-        std::vector<face> gpu_model,
+        std::vector<face>& gpu_model,
         const host_bvh_tree::node& host_node)
     {
         std::visit(

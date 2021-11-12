@@ -42,7 +42,7 @@ namespace Xrender {
     struct bvh_node {
         enum {LEAF, BOX} type;
         union {
-            unsigned int leaf; // face index
+            int leaf; // face index
             bvh_parent node;
         };
     };

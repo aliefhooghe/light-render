@@ -345,7 +345,10 @@ namespace Xrender
         const auto host_bvh = build_bvh_tree(model);
         const auto gpu_bvh = host_bvh->to_gpu_bvh();
         const auto bvh_build_duration = timewatch.stop();
-        std::cout << "Bvh build took " << bvh_build_duration.count() << " ms" << std::endl;;
+        std::cout << "Bvh build took " << bvh_build_duration.count() << " ms" << std::endl;
+        std::cout << "Bvh tree max depth is " << host_bvh->max_depth() << std::endl;
+        std::cout << "GPU bvh tree size is  : " << gpu_bvh.tree.size() << std::endl;
+        std::cout << "GPU bvh model size is : " << gpu_bvh.model.size() << std::endl;
 
         // Configure camera
         camera cam{};
