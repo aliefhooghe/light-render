@@ -12,7 +12,6 @@ namespace Xrender {
         material mtl;
         float3 points[3];
         float3 normals[3];
-        float3 normal;
     };
 }
 

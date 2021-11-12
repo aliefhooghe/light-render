@@ -12,11 +12,6 @@ namespace Xrender
         float3 p1, float3 p2, float3 p3,
         float3 n1, float3 n2, float3 n3);
 
-    face make_face(
-        material mtl,
-        float3 p1, float3 p2, float3 p3,
-        float3 n1, float3 n2, float3 n3,
-        float3 normal);
 }
 
 #endif
