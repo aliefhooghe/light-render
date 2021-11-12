@@ -88,6 +88,21 @@ namespace Xrender {
         return ret;
     }
 
+    static __device__ float3 triangle_uniform(curandState *state, const float3 triangle[])
+    {
+        const auto u = curand_uniform(state);
+        const auto v = curand_uniform(state);
+        const auto w = 1.f - (u + v);
+        if (w < 0)
+            return (1.f - u) * triangle[0] +
+                   (1.f - v) * triangle[1] +
+                   (1.f - w) * triangle[2];
+        else
+            return u * triangle[0] +
+                   v * triangle[1] +
+                   w * triangle[2];
+    }
+
 }
 
 #endif
