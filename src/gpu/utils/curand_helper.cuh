@@ -12,6 +12,12 @@ namespace Xrender {
         return min + (max - min) * curand_uniform(state);
     }
 
+    static __device__ int rand_int(curandState *state, int min, int max)
+    {
+        const auto count = 1 + max - min;
+        return min + curand(state) % count;
+    }
+
     static __device__ float3 rand_unit_sphere_uniform(curandState *state)
     {
         float u1, u2, s;
