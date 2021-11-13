@@ -15,7 +15,7 @@ namespace Xrender
     struct bvh_traversal_state
     {
         bvh_stack stack;
-        bool hit;
+        int best_index;
         float nearest;
     };
 
@@ -31,9 +31,8 @@ namespace Xrender
         // Root index (0) on the stack
         state.stack.pointer = 1u;
         state.stack.data[0] = 0;
-
-        state.hit = false;
         state.nearest = CUDART_INF_F;
+        state.best_index = -1;
     }
 
     static __device__ bvh_traversal_status bvh_traversal_step(
@@ -67,9 +66,8 @@ namespace Xrender
                 if (intersect_ray_face(leaf_face, pos, dir, tmp) && tmp.distance < state.nearest)
                 {
                     state.nearest = tmp.distance;
+                    state.best_index = node.leaf;
                     inter = tmp;
-                    inter.mtl = leaf_face.mtl;
-                    state.hit = true;
                 }
             }
 
@@ -77,10 +75,15 @@ namespace Xrender
         }
         else
         {
-            // Search is finished
-            return state.hit ?
-                bvh_traversal_status::HIT :
-                bvh_traversal_status::NO_HIT;
+            if (state.best_index & 0x80000000u)
+            {
+                return bvh_traversal_status::NO_HIT;
+            }
+            else
+            {
+                inter.mtl = model[state.best_index].mtl;
+                return bvh_traversal_status::HIT;
+            }
         }
     }
 
