@@ -12,9 +12,11 @@ namespace Xrender
         const auto normal = normalized(cross(a, b));
 
         return {
-                mtl,
+            {
                 {p1, p2, p3},
                 {normal, normal, normal}
+            },
+            mtl
         };
     }
 
@@ -26,10 +28,12 @@ namespace Xrender
         const auto a = p2 - p1;
         const auto b = p3 - p1;
 
-        return  {
-                mtl,
+        return {
+            {
                 {p1, p2, p3},
                 {n1, n2, n3}
-            };
+            },
+            mtl
+        };
     }
 }

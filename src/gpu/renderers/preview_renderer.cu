@@ -35,13 +35,14 @@ namespace Xrender
             float3 pos;
             float3 dir;
             intersection inter;
+            material mtl;
             float3 estimator = {0.f, 0.f, 0.f};
 
             for (auto i = 0; i < sample_count; i++)
             {
                 dir = cam.sample_ray(&rand_state, pos, x, y);
-                if (intersect_ray_bvh(tree, model, pos, dir, inter))
-                    estimator += gpu_preview_color(inter.mtl) *
+                if (intersect_ray_bvh(tree, model, pos, dir, inter, mtl))
+                    estimator += gpu_preview_color(mtl) *
                                  -dot(dir, inter.normal);
                 else
                     estimator += float3{0.f, 0.f, 1.f};

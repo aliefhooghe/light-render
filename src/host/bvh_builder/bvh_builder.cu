@@ -34,8 +34,8 @@ namespace Xrender
 
         for (auto it = begin; it != end; ++it)
         {
-            box.ext_min = min(box.ext_min, min((*it)->points[2], min((*it)->points[1], (*it)->points[0])));
-            box.ext_max = max(box.ext_max, max((*it)->points[2], max((*it)->points[1], (*it)->points[0])));
+            box.ext_min = min(box.ext_min, min((*it)->geo.points[2], min((*it)->geo.points[1], (*it)->geo.points[0])));
+            box.ext_max = max(box.ext_max, max((*it)->geo.points[2], max((*it)->geo.points[1], (*it)->geo.points[0])));
         }
 
         return box;
@@ -46,9 +46,9 @@ namespace Xrender
      * \param f face to be projected
      * \param dir the direction of the line
      */
-    static __host__ float face_axis_value(const face *f, const float3 &dir)
+    static __host__ float face_axis_value(const triangle& f, const float3 &dir)
     {
-        return dot(dir, f->points[0] + f->points[1] + f->points[2]);
+        return dot(dir, f.points[0] + f.points[1] + f.points[2]);
     }
 
     /**
@@ -63,7 +63,7 @@ namespace Xrender
 
         for (auto it = begin; it != end; ++it)
         {
-            const auto value = face_axis_value(*it, dir);
+            const auto value = face_axis_value((*it)->geo, dir);
             sum += value;
             square_sum += (value * value);
         }
@@ -229,8 +229,8 @@ namespace Xrender
             begin, end,
             [&sort_axis](const face *f1, const face *f2) -> bool
             {
-                return face_axis_value(f1, sort_axis) >
-                       face_axis_value(f2, sort_axis);
+                return face_axis_value(f1->geo, sort_axis) >
+                       face_axis_value(f2->geo, sort_axis);
             });
 
         // Find the best partition

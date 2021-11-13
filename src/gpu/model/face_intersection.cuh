@@ -11,10 +11,9 @@ namespace Xrender
         float3 normal;
         float3 ab;
         float distance;
-        material mtl;
     };
 
-    static __device__ bool intersect_ray_face(const face &fa, const float3 &pos, const float3 &dir, intersection &inter)
+    static __device__ bool intersect_ray_face(const triangle &fa, const float3 &pos, const float3 &dir, intersection &inter)
     {
         const float EPSILON = 0.000001f;
         const float3 vertex0 = fa.points[0];
@@ -53,27 +52,6 @@ namespace Xrender
             // This means that there is a line intersection but not a ray intersection.
             return false;
         }
-    }
-
-    static __device__ bool intersect_ray_model(
-        const face *model, const int face_count, const float3& pos, const float3& dir, intersection& inter)
-    {
-        intersection tmp_inter;
-        float nearest = CUDART_INF_F;
-        bool hit = false;
-
-        for (int i = 0u; i < face_count; ++i) {
-            if (intersect_ray_face(model[i], pos, dir, tmp_inter)) {
-                hit = true;
-                if (nearest > tmp_inter.distance) {
-                    nearest = tmp_inter.distance;
-                    inter = tmp_inter;
-                    inter.mtl = model[i].mtl;
-                }
-            }
-        }
-
-        return hit;
     }
 }
 

@@ -48,6 +48,7 @@ namespace Xrender {
             int sample_counter = 0;
             bvh_traversal_state traversal_state;
             intersection inter;
+            material mtl;
             auto rand_state = rand_pool[pixel_index];
             float3 estimator = {0.f, 0.f, 0.f};
             float3 pos;
@@ -66,7 +67,7 @@ namespace Xrender {
             {
                 // Perform a bvh traversal step
                 auto traversal_status =
-                    bvh_traversal_step(traversal_state, bvh, model, pos, dir, inter);
+                    bvh_traversal_step(traversal_state, bvh, model, pos, dir, inter, mtl);
 
                 if (traversal_status == bvh_traversal_status::IN_PROGRESS)
                 {
@@ -81,10 +82,10 @@ namespace Xrender {
                     if (traversal_status == bvh_traversal_status::HIT)
                     {
                         float3 next_dir;
-                        const float3 bounce_coeff = sample_brdf(&rand_state, inter, inter.normal, dir, next_dir);
+                        const float3 bounce_coeff = sample_brdf(&rand_state, mtl, inter, dir, next_dir);
                         brdf_coeff *= bounce_coeff;
 
-                        if (gpu_mtl_is_source(inter.mtl))
+                        if (gpu_mtl_is_source(mtl))
                         {
                             // record ray contribution
                             estimator += (russian_roulette_factor * brdf_coeff);

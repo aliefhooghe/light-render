@@ -8,10 +8,14 @@
 
 namespace Xrender {
 
-    struct face {
-        material mtl;
+    struct triangle {
         float3 points[3];
         float3 normals[3];
+    };
+
+    struct face {
+        triangle geo;
+        material mtl;
     };
 }
 

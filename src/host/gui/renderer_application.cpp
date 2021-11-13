@@ -73,7 +73,7 @@ namespace Xrender
         while (!_handle_events())
         {
             const auto render_duration =
-                std::chrono::milliseconds(_fast_mode ? 10000 : 15);
+                std::chrono::milliseconds(_fast_mode ? 10000 : 250);
 
             _renderer->integrate_for(render_duration);
             _renderer->develop_image();
