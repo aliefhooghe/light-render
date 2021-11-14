@@ -30,7 +30,7 @@ namespace Xrender {
 
     __global__ void path_sampler_kernel(
         const bvh_node *bvh,
-        const face *model,
+        const face *geometry,
         const material *mtl_bank,
         const camera cam,
         const int sample_count,
@@ -48,7 +48,6 @@ namespace Xrender {
         {
             int sample_counter = 0;
             bvh_traversal_state traversal_state;
-            intersection inter;
             auto rand_state = rand_pool[pixel_index];
             float3 estimator = {0.f, 0.f, 0.f};
             float3 pos;
@@ -65,11 +64,9 @@ namespace Xrender {
 
             while (sample_counter < sample_count)
             {
-                int mtl_index;
-
                 // Perform a bvh traversal step
                 auto traversal_status =
-                    bvh_traversal_step(traversal_state, bvh, model, pos, dir, inter, mtl_index);
+                    bvh_traversal_step(traversal_state, bvh, geometry, pos, dir);
 
                 if (traversal_status == bvh_traversal_status::IN_PROGRESS)
                 {
@@ -78,14 +75,22 @@ namespace Xrender {
                 }
                 else
                 {
+                    const auto best_geometry_index = traversal_state.best_index;
+                    const auto best_intersection = traversal_state.best_intersection;
+
                     // bvh traversal finished: prepare next traversal
                     bvh_traversal_init(traversal_state);
 
                     if (traversal_status == bvh_traversal_status::HIT)
                     {
+                        const auto best_face = geometry[best_geometry_index];
+                        const auto mtl = mtl_bank[best_face.mtl];
+                        const auto edge = best_face.geo.points[1] - best_face.geo.points[0];
+                        const auto normal = interpolate_normal(
+                            dir, best_intersection.uv, best_face.geo.normals);
+
                         float3 next_dir;
-                        const auto mtl = mtl_bank[mtl_index];
-                        const float3 bounce_coeff = sample_brdf(&rand_state, mtl, inter, dir, next_dir);
+                        const float3 bounce_coeff = sample_brdf(&rand_state, mtl, normal, edge, dir, next_dir);
                         brdf_coeff *= bounce_coeff;
 
                         if (gpu_mtl_is_source(mtl))
@@ -102,7 +107,7 @@ namespace Xrender {
                             {
                                 // continue the ray
                                 russian_roulette_factor /= roulette_prob;
-                                pos = inter.pos;
+                                pos = pos + best_intersection.distance * dir;
                                 dir = next_dir;
                                 bounce++;
                                 continue;

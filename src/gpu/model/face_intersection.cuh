@@ -2,46 +2,41 @@
 #define XRENDER_FACE_INTERSECTION_CUH_
 
 #include "gpu/model/float3_operators.cuh"
-#include "face.cuh"
 
 namespace Xrender
 {
     struct intersection
     {
-        float3 pos;
-        float3 normal;
-        float3 ab;
+        float2 uv;
         float distance;
     };
 
-    /**
-     *
-     * Après la bank !!!
-     * in:
-     *  pos, dir
-     *  only triangle::points!!! (normal are useless)
-     *
-     * out:
-     *  u, v coord (w = 1 - (u+v))
-     *  intersection pos, distance
-     */
+    static __device__ float3 interpolate_normal(
+        const float3& incoming_dir,
+        const float2& uv,
+        const float3 normals[3])
+    {
+        auto w = 1.f - (uv.x + uv.y);
+        const auto inter_normal = w * normals[0] + uv.x * normals[1] + uv.y * normals[2];
+        return dot(inter_normal, incoming_dir) > 0.f ? -inter_normal : inter_normal;
+    }
 
-    static __device__ bool intersect_ray_face(const triangle &fa, const float3 &pos, const float3 &dir, intersection &inter)
+    static __device__ bool intersect_ray_face(const float3 points[3], const float3 &pos, const float3 &dir, intersection &inter)
     {
         const float EPSILON = 0.000001f;
-        const float3 vertex0 = fa.points[0];
-        const float3 vertex1 = fa.points[1];
-        const float3 vertex2 = fa.points[2];
+        const auto point0 = points[0];
+        const auto point1 = points[1];
+        const auto point2 = points[2];
         float3 edge1, edge2, h, s, q;
-        float a, f, u, v, w;
-        edge1 = vertex1 - vertex0;
-        edge2 = vertex2 - vertex0;
+        float a, f, u, v;
+        edge1 = point1 - point0;
+        edge2 = point2 - point0;
         h = cross(dir, edge2);
         a = dot(edge1, h);
         if (fabs(a) < EPSILON)
             return false; // This ray is parallel to this triangle.
         f = 1.0f / a;
-        s = pos + EPSILON * dir - vertex0;
+        s = pos + EPSILON * dir - point0;
         u = f * dot(s, h);
         if (u < 0.f || u > 1.f)
             return false;
@@ -53,12 +48,8 @@ namespace Xrender
         float t = f * dot(edge2, q);
         if (t > EPSILON) // ray intersection
         {
-            w = 1.f - (u + v);
-            inter.pos = pos + t * dir;
+            inter.uv = make_float2(u, v);
             inter.distance = t;
-            const auto inter_normal = w * fa.normals[0] + u * fa.normals[1] + v * fa.normals[2];
-            inter.normal = dot(inter_normal, dir) > 0.f ? -inter_normal : inter_normal;
-            inter.ab = fa.points[1] - fa.points[0];
             return true;
         }
         else {

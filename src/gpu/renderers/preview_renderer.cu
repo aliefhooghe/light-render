@@ -14,7 +14,7 @@ namespace Xrender
 {
     __global__ void preview_integrate_kernel(
         const bvh_node *tree,
-        const face *model,
+        const face *geometry,
         const material *mtl_bank,
         const camera cam,
         curandState_t *rand_pool,
@@ -42,12 +42,13 @@ namespace Xrender
             {
                 dir = cam.sample_ray(&rand_state, pos, x, y);
 
-                int mtl_index;
-                if (intersect_ray_bvh(tree, model, pos, dir, inter, mtl_index))
+                int best_geo_index;
+                if (intersect_ray_bvh(tree, geometry, pos, dir, inter, best_geo_index))
                 {
+                    const auto mtl_index = geometry[best_geo_index].mtl;
+                    const auto normal = interpolate_normal(dir, inter.uv, geometry[best_geo_index].geo.normals);
                     const auto mtl = mtl_bank[mtl_index];
-                    estimator += gpu_preview_color(mtl) *
-                                 -dot(dir, inter.normal);
+                    estimator += gpu_preview_color(mtl) * -dot(dir, normal);
                 }
                 else
                 {

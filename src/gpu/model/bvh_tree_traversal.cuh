@@ -2,6 +2,7 @@
 #define BVH_TREE_TRAVERSAL_CUH_
 
 #include "face_intersection.cuh"
+#include "face.cuh"
 #include "bvh_tree.cuh"
 
 namespace Xrender
@@ -16,7 +17,7 @@ namespace Xrender
     {
         bvh_stack stack;
         int best_index;
-        float nearest;
+        intersection best_intersection;
     };
 
     enum class bvh_traversal_status
@@ -31,16 +32,15 @@ namespace Xrender
         // Root index (0) on the stack
         state.stack.pointer = 1u;
         state.stack.data[0] = 0;
-        state.nearest = CUDART_INF_F;
+        state.best_intersection.distance = CUDART_INF_F;
         state.best_index = -1;
     }
 
     static __device__ bvh_traversal_status bvh_traversal_step(
         bvh_traversal_state& state,
         const bvh_node *tree,
-        const face *model,
-        const float3& pos, const float3& dir,
-        intersection& inter, int& mtl_index)
+        const face *geometry,
+        const float3& pos, const float3& dir)
     {
         if (state.stack.pointer > 0)
         {
@@ -51,7 +51,7 @@ namespace Xrender
             if (node.type == bvh_node::BOX)
             {
                 float box_distance;
-                if (node.node.box.intersect(pos, dir, box_distance) && (box_distance < state.nearest))
+                if (node.node.box.intersect(pos, dir, box_distance) && (box_distance < state.best_intersection.distance))
                 {
                     state.stack.data[state.stack.pointer++] = node.node.second_child_idx; // right child
                     state.stack.data[state.stack.pointer++] = node_id + 1;                // left child visited first
@@ -62,11 +62,11 @@ namespace Xrender
                 //  leaf : test a face
                 intersection tmp;
 
-                if (intersect_ray_face(model[node.leaf].geo, pos, dir, tmp) && tmp.distance < state.nearest)
+                if (intersect_ray_face(geometry[node.leaf].geo.points, pos, dir, tmp)
+                   && tmp.distance < state.best_intersection.distance)
                 {
-                    state.nearest = tmp.distance;
+                    state.best_intersection = tmp;
                     state.best_index = node.leaf;
-                    inter = tmp;
                 }
             }
 
@@ -74,15 +74,9 @@ namespace Xrender
         }
         else
         {
-            if (state.best_index & 0x80000000u)
-            {
-                return bvh_traversal_status::NO_HIT;
-            }
-            else
-            {
-                mtl_index = model[state.best_index].mtl;
-                return bvh_traversal_status::HIT;
-            }
+            return state.best_index & 0x80000000u ?
+                bvh_traversal_status::NO_HIT :
+                bvh_traversal_status::HIT;
         }
     }
 
@@ -90,14 +84,25 @@ namespace Xrender
         const bvh_node *tree,
         const face *model,
         const float3& pos, const float3& dir,
-        intersection& inter, int& mtl)
+        intersection& best_intersection, int& best_geometry)
     {
         bvh_traversal_status traversal_status;
         bvh_traversal_state traversal_state;
+
         bvh_traversal_init(traversal_state);
-        while ((traversal_status = bvh_traversal_step(traversal_state, tree, model, pos, dir, inter, mtl))
+        while ((traversal_status = bvh_traversal_step(traversal_state, tree, model, pos, dir))
             == bvh_traversal_status::IN_PROGRESS);
-        return (traversal_status == bvh_traversal_status::HIT);
+
+        if (traversal_status == bvh_traversal_status::HIT)
+        {
+            best_intersection = traversal_state.best_intersection;
+            best_geometry = traversal_state.best_index;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
     }
 }
 
