@@ -243,7 +243,7 @@ namespace Xrender
             switch (_camera_setting)
             {
             case camera_setting::SENSOR_LENS_DISTANCE:
-                _renderer->scale_sensor_lens_distance(up, 1.0005f);
+                _renderer->scale_sensor_lens_distance(up, 1.0001f);
                 break;
 
             case camera_setting::FOCAL_LENGTH:
