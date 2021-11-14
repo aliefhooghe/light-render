@@ -71,13 +71,24 @@ namespace Xrender
         return mtl;
     }
 
-    material make_glass_material(float reflexivity, const float3& tf, const float3& ks, float a, float b)
+    material make_dispersive_glass_material(float reflexivity, const float3& tf, const float3& ks, float a, float b)
     {
         const float3 n = {
             cauchy_law(a, b, blue_wl_micro),
             cauchy_law(a, b, green_wl_micro),
             cauchy_law(a, b, red_wl_micro)};
 
+        material mtl;
+        mtl.type = material::DISPERSIVE_GLASS;
+        mtl.dispersive_glass.reflexivity = reflexivity;
+        mtl.dispersive_glass.tf = tf;
+        mtl.dispersive_glass.ks = ks;
+        mtl.dispersive_glass.n = n;
+        return mtl;
+    }
+
+    material make_glass_material(float reflexivity, const float3 &tf, const float3 &ks, float n)
+    {
         material mtl;
         mtl.type = material::GLASS;
         mtl.glass.reflexivity = reflexivity;

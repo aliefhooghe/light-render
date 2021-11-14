@@ -18,8 +18,16 @@ namespace Xrender
         else if (std::sscanf(line.c_str(), "focus_distance=%f\n", &config.camera_config.focus_distance) == 1);
         else if (std::sscanf(line.c_str(), "diaphragm_radius=%f\n", &config.camera_config.diaphragm_radius) == 1);
         else if (std::sscanf(line.c_str(), "sensor_width=%f\n", &config.camera_config.sensor_width) == 1);
-        else if (std::sscanf(line.c_str(), "image_width=%u\n", &config.camera_config.image_width) == 1);
-        else if (std::sscanf(line.c_str(), "image_height=%u\n", &config.camera_config.image_height ) == 1);
+        else if (std::sscanf(line.c_str(), "image_width=%u\n", &config.camera_config.image_width) == 1)
+        {
+            // be sure to have an even size
+            config.camera_config.image_width &= ~1;
+        }
+        else if (std::sscanf(line.c_str(), "image_height=%u\n", &config.camera_config.image_height ) == 1)
+        {
+
+            config.camera_config.image_height &= ~1;
+        }
         else
         {
             // unhandled line

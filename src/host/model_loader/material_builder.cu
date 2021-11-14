@@ -32,6 +32,11 @@ namespace Xrender
         case material::GLASS:
             _reflexivity = 0.1f;
             _tf = {0.8, 0.8, 0.8};
+            _ni = 1.2f;
+            break;
+        case material::DISPERSIVE_GLASS:
+            _reflexivity = 0.1f;
+            _tf = {0.8, 0.8, 0.8};
             _cauchy_a = 1.2f;
             _cauchy_b = 1.3f;
             break;
@@ -101,7 +106,9 @@ namespace Xrender
         case material::MIRROR:
             return make_mirror_material(_ks);
         case material::GLASS:
-            return make_glass_material(_reflexivity, _tf, _ks, _cauchy_a, _cauchy_b);
+            return make_glass_material(_reflexivity, _tf, _ks, _ni);
+        case material::DISPERSIVE_GLASS:
+            return make_dispersive_glass_material(_reflexivity, _tf, _ks, _cauchy_a, _cauchy_b);
         default:
             throw std::runtime_error("materail_builder : Invalid internal mtl type");
         }

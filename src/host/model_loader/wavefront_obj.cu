@@ -108,6 +108,8 @@ namespace Xrender
                     mtl_builder.decl_mtl_type(material::MIRROR);
                 else if (line.rfind("#Glass", 0) == 0)
                     mtl_builder.decl_mtl_type(material::GLASS);
+                else if (line.rfind("#DispersiveGlass", 0) == 0)
+                    mtl_builder.decl_mtl_type(material::DISPERSIVE_GLASS);
                 else
                 {
                     float value;

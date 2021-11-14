@@ -11,8 +11,8 @@ namespace Xrender
         float focus_distance{8};
         float diaphragm_radius{1E-3};
         float sensor_width{36E-3};
-        unsigned int image_width{360};
-        unsigned int image_height{240};
+        unsigned int image_width{360};  // must be even
+        unsigned int image_height{240}; // must be even
     };
 
     struct render_configuration

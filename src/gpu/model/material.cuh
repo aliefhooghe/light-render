@@ -28,12 +28,20 @@ namespace Xrender
         float3 reflection;
     };
 
-    struct glass_mtl
+    struct dispersive_glass_mtl
     {
         float reflexivity;
         float3 tf;
         float3 ks;
         float3 n;
+    };
+
+    struct glass_mtl
+    {
+        float reflexivity;
+        float3 tf;
+        float3 ks;
+        float n;
     };
 
     struct material
@@ -44,7 +52,8 @@ namespace Xrender
             LAMBERTIAN,
             PHONG,
             MIRROR,
-            GLASS
+            GLASS,
+            DISPERSIVE_GLASS
         } type;
 
         union
@@ -54,6 +63,7 @@ namespace Xrender
             phong_mtl phong;
             mirror_mtl mirror;
             glass_mtl glass;
+            dispersive_glass_mtl dispersive_glass;
         };
 
         /** \todo + preview_color(), + brdf(), ...**/
@@ -65,7 +75,8 @@ namespace Xrender
     material make_phong_material(float3 specular, float n);
     material make_lambertian_materal(float3 absorption);
     material make_mirror_material(float3 reflection);
-    material make_glass_material(float reflexivity, const float3 &tf, const float3 &ks, float a, float b);
+    material make_glass_material(float reflexivity, const float3 &tf, const float3 &ks, float n);
+    material make_dispersive_glass_material(float reflexivity, const float3 &tf, const float3 &ks, float a, float b);
 
     static __device__ bool gpu_mtl_is_source(const material &mtl)
     {
