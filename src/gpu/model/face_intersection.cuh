@@ -1,6 +1,7 @@
 #ifndef XRENDER_FACE_INTERSECTION_CUH_
 #define XRENDER_FACE_INTERSECTION_CUH_
 
+#include "gpu/model/float3_operators.cuh"
 #include "face.cuh"
 
 namespace Xrender
@@ -12,6 +13,18 @@ namespace Xrender
         float3 ab;
         float distance;
     };
+
+    /**
+     *
+     * Après la bank !!!
+     * in:
+     *  pos, dir
+     *  only triangle::points!!! (normal are useless)
+     *
+     * out:
+     *  u, v coord (w = 1 - (u+v))
+     *  intersection pos, distance
+     */
 
     static __device__ bool intersect_ray_face(const triangle &fa, const float3 &pos, const float3 &dir, intersection &inter)
     {

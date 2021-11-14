@@ -1,9 +1,10 @@
 
 #include "face_builder.cuh"
+#include "gpu/model/float3_operators.cuh"
 
 namespace Xrender
 {
-    face make_face(material mtl, float3 p1, float3 p2, float3 p3)
+    face make_face(int mtl, float3 p1, float3 p2, float3 p3)
     {
         const auto a = p2 - p1;
         const auto b = p3 - p1;
@@ -21,7 +22,7 @@ namespace Xrender
     }
 
     face make_face(
-        material mtl,
+        int mtl,
         float3 p1, float3 p2, float3 p3,
         float3 n1, float3 n2, float3 n3)
     {

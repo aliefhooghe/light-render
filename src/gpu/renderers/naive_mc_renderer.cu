@@ -31,6 +31,7 @@ namespace Xrender {
     __global__ void path_sampler_kernel(
         const bvh_node *bvh,
         const face *model,
+        const material *mtl_bank,
         const camera cam,
         const int sample_count,
         curandState_t *rand_pool,
@@ -48,7 +49,6 @@ namespace Xrender {
             int sample_counter = 0;
             bvh_traversal_state traversal_state;
             intersection inter;
-            material mtl;
             auto rand_state = rand_pool[pixel_index];
             float3 estimator = {0.f, 0.f, 0.f};
             float3 pos;
@@ -65,9 +65,11 @@ namespace Xrender {
 
             while (sample_counter < sample_count)
             {
+                int mtl_index;
+
                 // Perform a bvh traversal step
                 auto traversal_status =
-                    bvh_traversal_step(traversal_state, bvh, model, pos, dir, inter, mtl);
+                    bvh_traversal_step(traversal_state, bvh, model, pos, dir, inter, mtl_index);
 
                 if (traversal_status == bvh_traversal_status::IN_PROGRESS)
                 {
@@ -82,6 +84,7 @@ namespace Xrender {
                     if (traversal_status == bvh_traversal_status::HIT)
                     {
                         float3 next_dir;
+                        const auto mtl = mtl_bank[mtl_index];
                         const float3 bounce_coeff = sample_brdf(&rand_state, mtl, inter, dir, next_dir);
                         brdf_coeff *= bounce_coeff;
 
@@ -125,9 +128,11 @@ namespace Xrender {
     naive_mc_renderer::naive_mc_renderer(
         const bvh_node *device_tree,
         const face *device_model,
+        const material *device_mtl_bank,
         std::size_t thread_per_block)
     :   _device_tree{device_tree},
         _device_model{device_model},
+        _device_mtl_bank{device_mtl_bank},
         _thread_per_block{thread_per_block}
     {
     }
@@ -140,6 +145,6 @@ namespace Xrender {
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
         path_sampler_kernel<<<grid_dim, thread_per_block>>>(
-            _device_tree, _device_model, cam, sample_count, rand_pool, sensor);
+            _device_tree, _device_model, _device_mtl_bank, cam, sample_count, rand_pool, sensor);
     }
 }

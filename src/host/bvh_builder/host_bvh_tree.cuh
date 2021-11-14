@@ -14,15 +14,8 @@ namespace Xrender
     {
         struct gpu_compatible_bvh
         {
-            gpu_compatible_bvh(std::vector<bvh_node>&& t, std::vector<face>&& m) noexcept
-            :   tree{std::move(t)}, model{std::move(m)}
-            {}
-
-            gpu_compatible_bvh(const gpu_compatible_bvh&) = default;
-            gpu_compatible_bvh(gpu_compatible_bvh&&) noexcept = default;
-
-            std::vector<bvh_node> tree{};
-            std::vector<face> model{};
+            std::vector<bvh_node> tree;
+            std::vector<face> geometry;
         };
 
         using leaf = const face*;

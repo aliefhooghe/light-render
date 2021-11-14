@@ -4,11 +4,11 @@
 #include <vector>
 #include <filesystem>
 
-#include "gpu/model/face.cuh"
+#include "model.cuh"
 
 namespace Xrender {
 
-    std::vector<face> wavefront_obj_load(const std::filesystem::path& path);
+    model wavefront_obj_load(const std::filesystem::path& path);
 
 } /* namespace Xrender */
 

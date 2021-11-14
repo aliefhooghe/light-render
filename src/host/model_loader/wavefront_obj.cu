@@ -11,8 +11,23 @@
 
 namespace Xrender
 {
+    /**
+     * Material library loading
+     */
+    static void mtl_lib_add(
+        const material& mtl, const std::string& name,
+        std::vector<material>& mtl_bank,
+        std::map<std::string, int> &mtl_name_map)
+    {
+        const int mtl_index = mtl_bank.size();
+        mtl_bank.push_back(mtl);
+        mtl_name_map[name] = mtl_index;
+    }
 
-    static void load_mtl_lib(const std::filesystem::path &path, std::map<std::string, material> &material_map)
+    static void load_mtl_lib(
+        const std::filesystem::path &path,
+        std::vector<material>& mtl_bank,
+        std::map<std::string, int> &mtl_name_map)
     {
         std::ifstream stream{path};
         material_builder mtl_builder{};
@@ -29,7 +44,11 @@ namespace Xrender
             {
                 char mtl_name[256];
                 if (!current_mtl_name.empty())
-                    material_map[current_mtl_name] = mtl_builder.make_material();
+                {
+                    mtl_lib_add(
+                        mtl_builder.make_material(), current_mtl_name, mtl_bank, mtl_name_map);
+                }
+
                 if (sscanf(line.c_str(), "newmtl %s\n", mtl_name) == 1)
                 {
                     mtl_builder.decl_new_mtl();
@@ -119,20 +138,96 @@ namespace Xrender
 
         //  push last mtl
         if (!current_mtl_name.empty())
-            material_map[current_mtl_name] = mtl_builder.make_material();
+        {
+            mtl_lib_add(
+                mtl_builder.make_material(), current_mtl_name, mtl_bank, mtl_name_map);
+        }
     }
 
+    /**
+     * Geometry loading
+     */
 
-    std::vector<face> wavefront_obj_load(const std::filesystem::path& path)
+    static void parse_vector(const std::string& line, std::vector<float3>& vertex, std::vector<float3>& normals)
     {
-        std::vector<face> model{};
-        std::vector<float3> vertex{};
-        std::vector<float3> normals{};
+        float x, y, z;
+        if (std::sscanf(line.c_str(), "v %f %f %f", &x, &y, &z) == 3)
+            vertex.emplace_back(make_float3(x, y, z));
+        else if (std::sscanf(line.c_str(), "vn %f %f %f", &x, &y, &z) == 3)
+            normals.emplace_back(make_float3(x, y, z));
+    }
+
+    static void parse_face(
+        const std::string& line, const std::vector<float3>& vertex, const std::vector<float3>& normals,
+        const int current_mtl, std::vector<face>& geometry)
+    {
+        unsigned int v1, v2, v3;
+        unsigned int vt1, vt2, vt3;
+        unsigned int vn1, vn2, vn3;
+        if (std::sscanf(line.c_str(), "f %u//%u %u//%u %u//%u\n",
+                        &v1, &vn1, &v2, &vn2, &v3, &vn3) == 6 ||
+            std::sscanf(line.c_str(), "f %u/%u/%u  %u/%u/%u  %u/%u/%u",
+                        &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3) == 9)
+        {
+            if (v1 <= vertex.size() && v2 <= vertex.size() && v3 <= vertex.size() &&
+                vn1 <= normals.size() && vn2 <= normals.size() && vn3 <= normals.size())
+            {
+                geometry.push_back(
+                    make_face(current_mtl,
+                              vertex[v1 - 1u], vertex[v2 - 1u], vertex[v3 - 1u],
+                              normals[vn1 - 1u], normals[vn2 - 1u], normals[vn3 - 1u]));
+            }
+            else
+            {
+                std::cerr << "OBJ load : Warning : invalid vertex/normal id" << std::endl;
+            }
+        }
+    }
+
+    static void parse_mtl_lib_declaration(
+        const std::string& line, const std::filesystem::path& entry_path,
+        std::vector<material>& mtl_bank, std::map<std::string, int> &mtl_name_map)
+    {
+        char mtl_lib_filename[256];
+        if (std::sscanf(line.c_str(), "mtllib %s\n", mtl_lib_filename) == 1)
+        {
+            load_mtl_lib(
+                std::filesystem::path{entry_path}.replace_filename(mtl_lib_filename),
+                mtl_bank, mtl_name_map);
+        }
+    }
+
+    static void parse_mtl_use(const std::string& line, const std::map<std::string, int> &mtl_name_map, int& current_mtl)
+    {
+        char mtl_name[256];
+        if (std::sscanf(line.c_str(), "usemtl %s\n", mtl_name) == 1)
+        {
+            const auto it = mtl_name_map.find(mtl_name);
+            if (it != mtl_name_map.end())
+            {
+                current_mtl = it->second;
+            }
+            else
+            {
+                current_mtl = -1;
+                std::cerr << "OBJ load : Warning mtl " << mtl_name << " not found" << std::endl;
+            }
+        }
+    }
+
+    model wavefront_obj_load(const std::filesystem::path& path)
+    {
         std::ifstream stream{path};
 
-        std::map<std::string, material> material_map{};
-        const auto default_mtl = make_lambertian_materal(float3{0.7, 0.7, 0.7});
-        material current_mtl;
+        std::vector<face> geometry{};
+        std::vector<float3> vertex{};
+        std::vector<float3> normals{};
+
+        std::vector<material> mtl_bank{};
+        std::map<std::string, int> mtl_name_map{};
+
+        int default_mtl = -1; // may not be needed
+        int current_mtl = -1;
 
         if (!stream.is_open())
             throw std::invalid_argument("Unable to open file " + path.generic_string());
@@ -143,74 +238,40 @@ namespace Xrender
             switch (line[0])
             {
                 case 'v':
-                {
-                    float x, y, z;
-                    if (std::sscanf(line.c_str(), "v %f %f %f", &x, &y, &z) == 3)
-                        vertex.emplace_back(float3{x, y, z});
-                    else if (std::sscanf(line.c_str(), "vn %f %f %f", &x, &y, &z) == 3)
-                        normals.emplace_back(float3{x, y, z});
-                }
+                    parse_vector(line, vertex, normals);
                 break;
 
                 case 'f':
                 {
-                    unsigned int v1, v2, v3;
-                    unsigned int vt1, vt2, vt3;
-                    unsigned int vn1, vn2, vn3;
-                    if (std::sscanf(line.c_str(), "f %u//%u %u//%u %u//%u\n",
-                                    &v1, &vn1, &v2, &vn2, &v3, &vn3) == 6 ||
-                        std::sscanf(line.c_str(), "f %u/%u/%u  %u/%u/%u  %u/%u/%u",
-                                    &v1, &vt1, &vn1, &v2, &vt2, &vn2, &v3, &vt3, &vn3) == 9)
+                    if (current_mtl == -1)
                     {
-                        if (v1 <= vertex.size() && v2 <= vertex.size() && v3 <= vertex.size() &&
-                            vn1 <= normals.size() && vn2 <= normals.size() && vn3 <= normals.size())
+                        if (default_mtl == -1)
                         {
-                            model.push_back(
-                                make_face(current_mtl,
-                                    vertex[v1 - 1u], vertex[v2 - 1u], vertex[v3 - 1u],
-                                    normals[vn1 - 1u], normals[vn2 - 1u], normals[vn3 - 1u]));
+                            // Create a default material if none was provided
+                            default_mtl = mtl_bank.size();
+                            mtl_bank.emplace_back(
+                                make_lambertian_materal(float3{0.7, 0.7, 0.7}));
                         }
-                        else
-                        {
-                            std::cerr << "OBJ load : Warning : invalid vertex/normal id" << std::endl;
-                        }
+                        current_mtl = default_mtl;
                     }
+
+                    parse_face(line, vertex, normals, current_mtl, geometry);
                 }
                 break;
 
                 case 'm':
-                {
-                    char mtl_lib_filename[256];
-                    if (std::sscanf(line.c_str(), "mtllib %s\n", mtl_lib_filename) == 1)
-                    {
-                        load_mtl_lib(
-                            std::filesystem::path{path}.replace_filename(mtl_lib_filename),
-                            material_map);
-                    }
-                }
+                    parse_mtl_lib_declaration(line, path, mtl_bank, mtl_name_map);
                 break;
 
                 case 'u':
-                {
-                    char mtl_name[256];
-                    if (std::sscanf(line.c_str(), "usemtl %s\n", mtl_name) == 1)
-                    {
-                        const auto it = material_map.find(mtl_name);
-                        if (it != material_map.end())
-                        {
-                            current_mtl = it->second;
-                        }
-                        else
-                        {
-                            current_mtl = default_mtl;
-                            std::cerr << "OBJ load : Warning mtl " << mtl_name << " not found" << std::endl;
-                        }
-                    }
-                }
+                    parse_mtl_use(line, mtl_name_map, current_mtl);
                 break;
             }
         }
 
-        return model;
+        return model{
+            std::move(geometry),
+            std::move(mtl_bank)
+        };
     }
 }

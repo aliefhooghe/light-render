@@ -4,6 +4,7 @@
 #include <thread>
 #include <iostream>
 
+#include "gpu/model/float3_operators.cuh"
 #include "random_generator.cuh"
 #include "bvh_builder.cuh"
 
@@ -277,17 +278,17 @@ namespace Xrender
         }
     }
 
-    __host__ std::unique_ptr<host_bvh_tree> build_bvh_tree(const std::vector<face>& model)
+    __host__ std::unique_ptr<host_bvh_tree> build_bvh_tree(const std::vector<face>& geometry)
     {
-        const auto face_count = model.size();
-        std::vector<const face *> model_faces{face_count};
+        const auto face_count = geometry.size();
+        std::vector<const face *> geometry_faces{face_count};
 
         // Get faces ptr in a buffer (in order to sort them)
         std::transform(
-            model.begin(), model.end(), model_faces.begin(),
+            geometry.begin(), geometry.end(), geometry_faces.begin(),
             [](const auto& f) { return &f; });
 
-        return build_branch(model_faces.begin(), model_faces.end());
+        return build_branch(geometry_faces.begin(), geometry_faces.end());
     }
 
 }

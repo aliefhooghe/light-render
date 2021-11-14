@@ -40,7 +40,7 @@ namespace Xrender
         const bvh_node *tree,
         const face *model,
         const float3& pos, const float3& dir,
-        intersection& inter, material& mtl)
+        intersection& inter, int& mtl_index)
     {
         if (state.stack.pointer > 0)
         {
@@ -80,7 +80,7 @@ namespace Xrender
             }
             else
             {
-                mtl = model[state.best_index].mtl;
+                mtl_index = model[state.best_index].mtl;
                 return bvh_traversal_status::HIT;
             }
         }
@@ -90,7 +90,7 @@ namespace Xrender
         const bvh_node *tree,
         const face *model,
         const float3& pos, const float3& dir,
-        intersection& inter, material& mtl)
+        intersection& inter, int& mtl)
     {
         bvh_traversal_status traversal_status;
         bvh_traversal_state traversal_state;

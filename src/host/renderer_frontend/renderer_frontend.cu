@@ -32,6 +32,7 @@ namespace Xrender
         renderer_frontend_implementation(
             camera cam,
             const host_bvh_tree::gpu_compatible_bvh &gpu_bvh,
+            const std::vector<material> &mtl_bank,
             GLuint texture_id);
         ~renderer_frontend_implementation() noexcept;
 
@@ -68,10 +69,15 @@ namespace Xrender
             std::unique_ptr<abstract_image_developer> &&developer);
         void _reset_current_renderer();
 
+        // Sent at each kernel call
         camera _camera;
-        bvh_node *_device_tree{nullptr};
-        face *_device_model{nullptr};
 
+        // Resources stored on gpu device
+        bvh_node *_device_tree{nullptr};
+        face *_device_geometry{nullptr};
+        material *_device_mtl_bank{nullptr};
+
+        // Rendering management
         std::size_t _current_renderer{0u};
         std::size_t _current_developer{0u};
 
@@ -81,6 +87,7 @@ namespace Xrender
         std::vector<worker_descriptor> _renderers_settings{};
         std::vector<worker_descriptor> _developpers_settings{};
 
+        // OpenGL texture registered for display
         registered_texture _registered_texture;
     };
 
@@ -90,13 +97,15 @@ namespace Xrender
 
     renderer_frontend_implementation::renderer_frontend_implementation(
         camera cam,
-        const host_bvh_tree::gpu_compatible_bvh &gpu_bvh,
+        const host_bvh_tree::gpu_compatible_bvh &bvh,
+        const std::vector<material>& mtl_bank,
         GLuint texture_id)
     :   _camera{cam},
         _registered_texture{texture_id, cam.get_image_width(), cam.get_image_height()}
     {
-        _device_tree = clone_to_device(gpu_bvh.tree);
-        _device_model = clone_to_device(gpu_bvh.model);
+        _device_tree = clone_to_device(bvh.tree);
+        _device_geometry = clone_to_device(bvh.geometry);
+        _device_mtl_bank = clone_to_device(mtl_bank);
 
         // Add average developer
         {
@@ -137,17 +146,18 @@ namespace Xrender
 
         _add_renderer(
             {"Preview", {}},
-            std::make_unique<preview_renderer>(_device_tree, _device_model));
+            std::make_unique<preview_renderer>(_device_tree, _device_geometry, _device_mtl_bank));
 
         _add_renderer(
             {"Path Tracer", {}},
-            std::make_unique<naive_mc_renderer>(_device_tree, _device_model));
+            std::make_unique<naive_mc_renderer>(_device_tree, _device_geometry, _device_mtl_bank));
     }
 
     renderer_frontend_implementation::~renderer_frontend_implementation() noexcept
     {
         CUDA_WARNING(cudaFree(_device_tree));
-        CUDA_WARNING(cudaFree(_device_model));
+        CUDA_WARNING(cudaFree(_device_geometry));
+        CUDA_WARNING(cudaFree(_device_mtl_bank));
     }
 
     void renderer_frontend_implementation::_add_renderer(
@@ -340,15 +350,15 @@ namespace Xrender
         const auto load_duration = timewatch.stop();
 
         // Create a bvh usable on gpu
-        std::cout << "Model loading took " << load_duration.count() << " ms\nBuild bvh tree (" << model.size() << " faces)" << std::endl;
+        std::cout << "Model loading took " << load_duration.count() << " ms\nBuild bvh tree (" << model.geometry.size() << " faces)" << std::endl;
         timewatch.start();
-        const auto host_bvh = build_bvh_tree(model);
+        const auto host_bvh = build_bvh_tree(model.geometry);
         const auto gpu_bvh = host_bvh->to_gpu_bvh();
         const auto bvh_build_duration = timewatch.stop();
         std::cout << "Bvh build took " << bvh_build_duration.count() << " ms" << std::endl;
         std::cout << "Bvh tree max depth is " << host_bvh->max_depth() << std::endl;
         std::cout << "GPU bvh tree size is  : " << gpu_bvh.tree.size() << std::endl;
-        std::cout << "GPU bvh model size is : " << gpu_bvh.model.size() << std::endl;
+        std::cout << "GPU bvh model size is : " << gpu_bvh.geometry.size() << std::endl;
 
         // Configure camera
         camera cam{};
@@ -357,7 +367,7 @@ namespace Xrender
         // Initialize the frontend implementation
         std::cout << "Initialize computations" << std::endl;
         auto *implementation =
-            new renderer_frontend_implementation{cam, gpu_bvh, texture_id};
+            new renderer_frontend_implementation{cam, gpu_bvh, model.mtl_bank, texture_id};
 
         return std::make_unique<renderer_frontend>(implementation);
     }

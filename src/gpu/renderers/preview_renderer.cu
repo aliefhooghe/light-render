@@ -15,6 +15,7 @@ namespace Xrender
     __global__ void preview_integrate_kernel(
         const bvh_node *tree,
         const face *model,
+        const material *mtl_bank,
         const camera cam,
         curandState_t *rand_pool,
         const int sample_count,
@@ -35,17 +36,23 @@ namespace Xrender
             float3 pos;
             float3 dir;
             intersection inter;
-            material mtl;
             float3 estimator = {0.f, 0.f, 0.f};
 
             for (auto i = 0; i < sample_count; i++)
             {
                 dir = cam.sample_ray(&rand_state, pos, x, y);
-                if (intersect_ray_bvh(tree, model, pos, dir, inter, mtl))
+
+                int mtl_index;
+                if (intersect_ray_bvh(tree, model, pos, dir, inter, mtl_index))
+                {
+                    const auto mtl = mtl_bank[mtl_index];
                     estimator += gpu_preview_color(mtl) *
                                  -dot(dir, inter.normal);
+                }
                 else
+                {
                     estimator += float3{0.f, 0.f, 1.f};
+                }
             }
 
             image[pixel_index] += estimator;
@@ -53,9 +60,14 @@ namespace Xrender
         }
     }
 
-    preview_renderer::preview_renderer(const bvh_node *device_tree, const face *device_model, std::size_t thread_per_block)
+    preview_renderer::preview_renderer(
+        const bvh_node *device_tree,
+        const face *device_model,
+        const material *device_mtl_bank,
+        std::size_t thread_per_block)
         : _device_tree{device_tree},
           _device_model{device_model},
+          _device_mtl_bank{device_mtl_bank},
           _thread_per_block{thread_per_block}
     {
     }
@@ -68,6 +80,6 @@ namespace Xrender
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
         preview_integrate_kernel<<<grid_dim, thread_per_block>>>(
-            _device_tree, _device_model, cam, rand_pool, sample_count, sensor);
+            _device_tree, _device_model, _device_mtl_bank, cam, rand_pool, sample_count, sensor);
     }
 }
