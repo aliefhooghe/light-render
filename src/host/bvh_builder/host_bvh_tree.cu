@@ -1,6 +1,7 @@
 
 #include <stdexcept>
 #include <iostream>
+
 #include "host_bvh_tree.cuh"
 
 namespace Xrender
@@ -20,17 +21,17 @@ namespace Xrender
         gpu_node.type = bvh_node::BOX;
         gpu_node.node.box = host_branch.box;
 
-        const auto root_index = gpu_tree.size();
+        const auto branch_root_index = gpu_tree.size();
         gpu_tree.emplace_back(std::move(gpu_node));
 
         // Push left child
         _push_node(gpu_tree, gpu_model, host_branch.left_child);
 
-        // Update root info
-        gpu_tree[root_index].node.second_child_idx = gpu_tree.size();
-
         // Push right child
         _push_node(gpu_tree, gpu_model, host_branch.right_child);
+
+        // Update branch root skip index
+        gpu_tree[branch_root_index].node.skip_index = gpu_tree.size();
     }
 
     __host__ static void _push_child(
@@ -69,18 +70,13 @@ namespace Xrender
 
     __host__ host_bvh_tree::gpu_compatible_bvh host_bvh_tree::to_gpu_bvh() const
     {
-        const auto depth = max_depth();
-        if (depth > BVH_MAX_DEPTH)
-        {
-            std::cout << "Too much depth in tree for gpu: " << depth << std::endl;
-            //throw std::invalid_argument("Bvh depth is too high for gpu");
-        }
-
         std::vector<bvh_node> gpu_tree{};
         std::vector<face> gpu_model{};
 
+        // Push the root on the tree
         _push_branch(gpu_tree, gpu_model, *this);
 
+        // Change index that skip to the end at -1
         gpu_tree.shrink_to_fit();
         gpu_model.shrink_to_fit();
 

@@ -13,7 +13,7 @@
 namespace Xrender
 {
     __global__ void preview_integrate_kernel(
-        const bvh_node *tree,
+        const bvh_node *tree, int tree_size,
         const face *geometry,
         const material *mtl_bank,
         const camera cam,
@@ -43,7 +43,7 @@ namespace Xrender
                 dir = cam.sample_ray(&rand_state, pos, x, y);
 
                 int best_geo_index;
-                if (intersect_ray_bvh(tree, geometry, pos, dir, inter, best_geo_index))
+                if (intersect_ray_bvh(tree, tree_size, geometry, pos, dir, inter, best_geo_index))
                 {
                     const auto mtl_index = geometry[best_geo_index].mtl;
                     const auto normal = interpolate_normal(dir, inter.uv, geometry[best_geo_index].geo.normals);
@@ -62,11 +62,12 @@ namespace Xrender
     }
 
     preview_renderer::preview_renderer(
-        const bvh_node *device_tree,
+        const bvh_node *device_tree, int tree_size,
         const face *device_model,
         const material *device_mtl_bank,
         std::size_t thread_per_block)
         : _device_tree{device_tree},
+          _tree_size{tree_size},
           _device_model{device_model},
           _device_mtl_bank{device_mtl_bank},
           _thread_per_block{thread_per_block}
@@ -81,6 +82,6 @@ namespace Xrender
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
         preview_integrate_kernel<<<grid_dim, thread_per_block>>>(
-            _device_tree, _device_model, _device_mtl_bank, cam, rand_pool, sample_count, sensor);
+            _device_tree, _tree_size, _device_model, _device_mtl_bank, cam, rand_pool, sample_count, sensor);
     }
 }
