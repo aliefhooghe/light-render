@@ -18,7 +18,7 @@ namespace Xrender
             const bvh_node *device_tree, int tree_size,
             const face *device_model,
             const material *device_mtl_bank,
-            std::size_t thread_per_block = 256);
+            std::size_t thread_per_block = 64);
 
         naive_mc_renderer(const naive_mc_renderer &) = delete;
         naive_mc_renderer(naive_mc_renderer &&) noexcept = default;

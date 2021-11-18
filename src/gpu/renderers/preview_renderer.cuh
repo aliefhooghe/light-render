@@ -18,7 +18,7 @@ namespace Xrender
             const bvh_node *device_tree, int tree_size,
             const face *device_model,
             const material *device_mtl_bank,
-            std::size_t thread_per_block = 256);
+            std::size_t thread_per_block = 64);
 
         preview_renderer(const preview_renderer &) = delete;
         preview_renderer(preview_renderer &&) noexcept = default;
