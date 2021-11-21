@@ -74,6 +74,7 @@ namespace Xrender
 
         // Resources stored on gpu device
         bvh_node *_device_tree{nullptr};
+        int _tree_size{0};
         face *_device_geometry{nullptr};
         material *_device_mtl_bank{nullptr};
 
@@ -104,6 +105,7 @@ namespace Xrender
         _registered_texture{texture_id, cam.get_image_width(), cam.get_image_height()}
     {
         _device_tree = clone_to_device(bvh.tree);
+        _tree_size = bvh.tree.size();
         _device_geometry = clone_to_device(bvh.geometry);
         _device_mtl_bank = clone_to_device(mtl_bank);
 
@@ -146,11 +148,11 @@ namespace Xrender
 
         _add_renderer(
             {"Preview", {}},
-            std::make_unique<preview_renderer>(_device_tree, _device_geometry, _device_mtl_bank));
+            std::make_unique<preview_renderer>(_device_tree, _tree_size, _device_geometry, _device_mtl_bank));
 
         _add_renderer(
             {"Path Tracer", {}},
-            std::make_unique<naive_mc_renderer>(_device_tree, _device_geometry, _device_mtl_bank));
+            std::make_unique<naive_mc_renderer>(_device_tree, _tree_size, _device_geometry, _device_mtl_bank));
     }
 
     renderer_frontend_implementation::~renderer_frontend_implementation() noexcept

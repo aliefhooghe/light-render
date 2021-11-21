@@ -4,8 +4,6 @@
 
 #include <math_constants.h>
 
-#define BVH_MAX_DEPTH (64u)
-
 namespace Xrender {
 
     struct aabb_box {
@@ -34,16 +32,17 @@ namespace Xrender {
 
     };
 
-    struct bvh_parent {
+    struct bvh_parent
+    {
         aabb_box box;
-        int second_child_idx;
+        int skip_index;
     };
 
     struct bvh_node {
         enum {LEAF, BOX} type;
         union {
-            int leaf; // face index
             bvh_parent node;
+            int leaf;
         };
     };
 }

@@ -15,10 +15,10 @@ namespace Xrender
     {
     public:
         __host__ preview_renderer(
-            const bvh_node *device_tree,
+            const bvh_node *device_tree, int tree_size,
             const face *device_model,
             const material *device_mtl_bank,
-            std::size_t thread_per_block = 256);
+            std::size_t thread_per_block = 64);
 
         preview_renderer(const preview_renderer &) = delete;
         preview_renderer(preview_renderer &&) noexcept = default;
@@ -29,6 +29,7 @@ namespace Xrender
 
     private:
         const bvh_node *_device_tree{nullptr};
+        const int _tree_size{0};
         const face *_device_model{nullptr};
         const material *_device_mtl_bank{nullptr};
         std::size_t _thread_per_block{};

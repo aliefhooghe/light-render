@@ -7,16 +7,10 @@
 
 namespace Xrender
 {
-    struct bvh_stack
-    {
-        int pointer;
-        int data[BVH_MAX_DEPTH];
-    };
-
     struct bvh_traversal_state
     {
-        bvh_stack stack;
-        int best_index;
+        int bvh_index;
+        int best_index; // to be renamed to best_geo_index
         intersection best_intersection;
     };
 
@@ -29,59 +23,58 @@ namespace Xrender
 
     static __device__ void bvh_traversal_init(bvh_traversal_state& state)
     {
-        // Root index (0) on the stack
-        state.stack.pointer = 1u;
-        state.stack.data[0] = 0;
+        state.bvh_index = 0; // Root index
         state.best_intersection.distance = CUDART_INF_F;
         state.best_index = -1;
     }
 
     static __device__ bvh_traversal_status bvh_traversal_step(
         bvh_traversal_state& state,
-        const bvh_node *tree,
+        const bvh_node *tree, const int tree_size,
         const face *geometry,
         const float3& pos, const float3& dir)
     {
-        if (state.stack.pointer > 0)
-        {
-            // Pop a node
-            const auto node_id = state.stack.data[--state.stack.pointer];
-            const auto node = tree[node_id];
+        const auto node = tree[state.bvh_index];
 
-            if (node.type == bvh_node::BOX)
+        if (node.type == bvh_node::BOX)
+        {
+            float box_distance;
+            if (node.node.box.intersect(pos, dir, box_distance) && (box_distance < state.best_intersection.distance))
             {
-                float box_distance;
-                if (node.node.box.intersect(pos, dir, box_distance) && (box_distance < state.best_intersection.distance))
-                {
-                    state.stack.data[state.stack.pointer++] = node.node.second_child_idx; // right child
-                    state.stack.data[state.stack.pointer++] = node_id + 1;                // left child visited first
-                }
+                // Visit the left child
+                state.bvh_index++;
             }
             else
             {
-                //  leaf : test a face
-                intersection tmp;
-
-                if (intersect_ray_face(geometry[node.leaf].geo.points, pos, dir, tmp)
-                   && tmp.distance < state.best_intersection.distance)
-                {
-                    state.best_intersection = tmp;
-                    state.best_index = node.leaf;
-                }
+                // Skip this node
+                state.bvh_index = node.node.skip_index;
             }
-
-            return bvh_traversal_status::IN_PROGRESS;
         }
         else
         {
-            return state.best_index & 0x80000000u ?
-                bvh_traversal_status::NO_HIT :
-                bvh_traversal_status::HIT;
+            //  leaf : test a face
+            intersection tmp;
+
+            if (intersect_ray_face(geometry[node.leaf].geo.points, pos, dir, tmp) && tmp.distance < state.best_intersection.distance)
+            {
+                state.best_intersection = tmp;
+                state.best_index = node.leaf;
+            }
+
+            // Continue the traversal
+            state.bvh_index++;
         }
+
+        return state.bvh_index == tree_size ?
+            (
+                state.best_index & 0x80000000u ?
+                    bvh_traversal_status::NO_HIT :
+                    bvh_traversal_status::HIT
+            ) : bvh_traversal_status::IN_PROGRESS;
     }
 
     static __device__ bool intersect_ray_bvh(
-        const bvh_node *tree,
+        const bvh_node *tree, const int tree_size,
         const face *model,
         const float3& pos, const float3& dir,
         intersection& best_intersection, int& best_geometry)
@@ -90,7 +83,7 @@ namespace Xrender
         bvh_traversal_state traversal_state;
 
         bvh_traversal_init(traversal_state);
-        while ((traversal_status = bvh_traversal_step(traversal_state, tree, model, pos, dir))
+        while ((traversal_status = bvh_traversal_step(traversal_state, tree, tree_size, model, pos, dir))
             == bvh_traversal_status::IN_PROGRESS);
 
         if (traversal_status == bvh_traversal_status::HIT)
