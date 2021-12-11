@@ -105,58 +105,13 @@ namespace Xrender
     }
 
     /**
-     * \brief Compute the variance of the faces gravity centers projected on a line
-     */
-    template <typename Titerator>
-    static __host__ float axis_variance(const float3 &dir, Titerator begin, Titerator end)
-    {
-        const float count = end - begin;
-        float sum = 0.0f;
-        float square_sum = 0.0f;
-
-        for (auto it = begin; it != end; ++it)
-        {
-            const auto value = face_axis_value(it->face->geo, dir);
-            sum += value;
-            square_sum += (value * value);
-        }
-
-        return (square_sum - (sum * sum)) / (count * count);
-    }
-
-    /**
-     * \brief Sample some random axis directions and return the one
-     * with the greatest axis variance
-     */
-    template <typename Titerator>
-    static __host__ float3 find_axis(Titerator begin, Titerator end, std::size_t sample_count)
-    {
-        float3 best_axis{};
-        float best_variance = -INFINITY;
-
-        for (auto i = 0u; i < sample_count; ++i)
-        {
-            const float3 axis = rand::unit_sphere_uniform();
-            const float axis_var = axis_variance(axis, begin, end);
-
-            if (axis_var > best_variance)
-            {
-                best_variance = axis_var;
-                best_axis = axis;
-            }
-        }
-
-        return best_axis;
-    }
-
-    /**
      * \brief Try to find the partition with the lower SAH heuristic
      */
     template <typename Titerator>
-    static __host__ auto find_partition(Titerator begin, Titerator end, std::size_t axis_sample_count)
+    static __host__ auto find_partition(Titerator begin, Titerator end)
     {
         // Generate an axis along which face are spread
-        const auto sort_axis = find_axis(begin, end, axis_sample_count);
+        const auto sort_axis = rand::unit_sphere_uniform();
 
         // Sort the faces according to the axis
         std::sort(
@@ -205,7 +160,7 @@ namespace Xrender
     static __host__ std::unique_ptr<host_bvh_tree> build_branch(Titerator begin, Titerator end)
     {
         // find best partition and build childs
-        const auto partition = find_partition(begin, end, 32);
+        const auto partition = find_partition(begin, end);
 
         // Build node
         auto branch = std::make_unique<host_bvh_tree>();
