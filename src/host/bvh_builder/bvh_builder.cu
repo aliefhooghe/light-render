@@ -10,6 +10,11 @@
 
 namespace Xrender
 {
+    struct bvh_builder_input
+    {
+        const face *face;
+        aabb_box boxes[2]; // 0: left, 1: right
+    };
 
     /**
      * \brief return half the surface of a aabb box
@@ -35,11 +40,26 @@ namespace Xrender
 
         for (auto it = begin; it != end; ++it)
         {
-            box.ext_min = min(box.ext_min, min((*it)->geo.points[2], min((*it)->geo.points[1], (*it)->geo.points[0])));
-            box.ext_max = max(box.ext_max, max((*it)->geo.points[2], max((*it)->geo.points[1], (*it)->geo.points[0])));
+            box.ext_min = min(box.ext_min, min(it->face->geo.points[2], min(it->face->geo.points[1], it->face->geo.points[0])));
+            box.ext_max = max(box.ext_max, max(it->face->geo.points[2], max(it->face->geo.points[1], it->face->geo.points[0])));
         }
 
         return box;
+    }
+
+    template <typename Titerator>
+    static __host__ void make_boxes(Titerator begin, Titerator end, unsigned int box_index)
+    {
+        aabb_box box = {
+            {INFINITY, INFINITY, INFINITY},
+            {-INFINITY, -INFINITY, -INFINITY}};
+
+        for (auto it = begin; it != end; ++it)
+        {
+            box.ext_min = min(box.ext_min, min(it->face->geo.points[2], min(it->face->geo.points[1], it->face->geo.points[0])));
+            box.ext_max = max(box.ext_max, max(it->face->geo.points[2], max(it->face->geo.points[1], it->face->geo.points[0])));
+            it->boxes[box_index] = box;
+        }
     }
 
     /**
@@ -64,7 +84,7 @@ namespace Xrender
 
         for (auto it = begin; it != end; ++it)
         {
-            const auto value = face_axis_value((*it)->geo, dir);
+            const auto value = face_axis_value(it->face->geo, dir);
             sum += value;
             square_sum += (value * value);
         }
@@ -228,14 +248,36 @@ namespace Xrender
         // Sort the faces according to the axis
         std::sort(
             begin, end,
-            [&sort_axis](const face *f1, const face *f2) -> bool
+            [&sort_axis](const bvh_builder_input& f1, const bvh_builder_input& f2) -> bool
             {
-                return face_axis_value(f1->geo, sort_axis) >
-                       face_axis_value(f2->geo, sort_axis);
+                return face_axis_value(f1.face->geo, sort_axis) >
+                       face_axis_value(f2.face->geo, sort_axis);
             });
 
+        // Compute all the boxes
+        make_boxes(begin, end, 0); // left
+        make_boxes(std::make_reverse_iterator(end), std::make_reverse_iterator(begin), 1); // right
+
         // Find the best partition
-        return parallel_find_min_sah(15, begin, end);
+        const auto count = end - begin;
+        auto best_pivot = begin + 1;
+        auto best_sah = INFINITY;
+
+        for (auto it = begin + 1; it != end - 1; ++it)
+        {
+            const float left_count = it - begin;
+            const float right_count = end - it;
+            const float sah =
+                (float)left_count * aabb_box_half_area(it->boxes[0]) +
+                (float)right_count * aabb_box_half_area((it + 1)->boxes[1]);
+
+            if (sah < best_sah)
+            {
+                best_pivot = it;
+            }
+        }
+
+        return best_pivot;
     }
 
 
@@ -270,7 +312,7 @@ namespace Xrender
         if (begin + 1 == end)
         {
             // return face as leaf
-            return *begin;
+            return begin->face;
         }
         else
         {
@@ -281,14 +323,18 @@ namespace Xrender
     __host__ std::unique_ptr<host_bvh_tree> build_bvh_tree(const std::vector<face>& geometry)
     {
         const auto face_count = geometry.size();
-        std::vector<const face *> geometry_faces{face_count};
+        std::vector<bvh_builder_input> builder_input{face_count};
 
         // Get faces ptr in a buffer (in order to sort them)
         std::transform(
-            geometry.begin(), geometry.end(), geometry_faces.begin(),
-            [](const auto& f) { return &f; });
+            geometry.begin(), geometry.end(), builder_input.begin(),
+            [](const auto& f) {
+                return bvh_builder_input{
+                    .face = &f
+                };
+            });
 
-        return build_branch(geometry_faces.begin(), geometry_faces.end());
+        return build_branch(builder_input.begin(), builder_input.end());
     }
 
 }
