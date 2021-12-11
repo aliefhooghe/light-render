@@ -268,12 +268,13 @@ namespace Xrender
             const float left_count = it - begin;
             const float right_count = end - it;
             const float sah =
-                (float)left_count * aabb_box_half_area(it->boxes[0]) +
-                (float)right_count * aabb_box_half_area((it + 1)->boxes[1]);
+                (float)left_count * aabb_box_half_area((it - 1)->boxes[0]) +
+                (float)right_count * aabb_box_half_area(it->boxes[1]);
 
             if (sah < best_sah)
             {
                 best_pivot = it;
+                best_sah = sah;
             }
         }
 
