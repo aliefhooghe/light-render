@@ -112,4 +112,35 @@ namespace Xrender
         );
     }
 
+    static __host__ std::size_t _optimize_child(const host_bvh_tree::parent& parent)
+    {
+        return parent->optimize();
+    }
+
+    static __host__ std::size_t _optimize_child(const host_bvh_tree::leaf& leaf)
+    {
+        return 1;
+    }
+
+    static __host__ std::size_t _optimize_node(const host_bvh_tree::node& host_node)
+    {
+        return std::visit(
+            [](auto& child) { return _optimize_child(child); },
+            host_node);
+    }
+
+    __host__ std::size_t host_bvh_tree::optimize() noexcept
+    {
+        // left child will be visited first
+        const auto left_depth = _optimize_node(left_child);
+        const auto right_depth = _optimize_node(right_child);
+
+        if (left_depth > right_depth)
+        {
+            std::swap(left_child, right_child);
+        }
+
+        return 1 + std::max(left_depth, right_depth);
+    }
+
 }
