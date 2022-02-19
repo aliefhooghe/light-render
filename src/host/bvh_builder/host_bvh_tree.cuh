@@ -24,7 +24,6 @@ namespace Xrender
 
         __host__ std::size_t max_depth() const noexcept;
         __host__ gpu_compatible_bvh to_gpu_bvh() const;
-        __host__ std::size_t optimize() noexcept;
 
         aabb_box box;
         node left_child{};

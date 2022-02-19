@@ -355,9 +355,6 @@ namespace Xrender
         std::cout << "Model loading took " << load_duration.count() << " ms\nBuild bvh tree (" << model.geometry.size() << " faces)" << std::endl;
         timewatch.start();
         const auto host_bvh = build_bvh_tree(model.geometry);
-
-        host_bvh->optimize();
-
         const auto gpu_bvh = host_bvh->to_gpu_bvh();
         const auto bvh_build_duration = timewatch.stop();
         std::cout << "Bvh build took " << bvh_build_duration.count() << " ms" << std::endl;
