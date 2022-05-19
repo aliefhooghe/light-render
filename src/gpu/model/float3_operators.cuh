@@ -136,6 +136,16 @@ namespace Xrender {
         };
     }
 
+    static __device__ __host__ __forceinline__ float& dim_val(float3& x, unsigned int dim)
+    {
+        return reinterpret_cast<float*>(&x)[dim];
+    }
+
+    static __device__ __host__ __forceinline__ const float& dim_val(const float3& x, unsigned int dim)
+    {
+        return reinterpret_cast<const float*>(&x)[dim];
+    }
+
 }
 
 #endif

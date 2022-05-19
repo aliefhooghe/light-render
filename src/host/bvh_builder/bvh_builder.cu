@@ -97,29 +97,29 @@ namespace Xrender
     /**
      * \brief compute the coordinate of a face gravity center projected on a line
      * \param f face to be projected
-     * \param dir the direction of the line
+     * \param dim in [0, 1, 2] : basis axis
      */
-    static __host__ float face_axis_value(const triangle& f, const float3 &dir)
+    static __host__ float face_axis_value(const triangle& f, const unsigned int dim)
     {
-        return dot(dir, f.points[0] + f.points[1] + f.points[2]);
+        const auto p0_val = dim_val(f.points[0], dim);
+        const auto p1_val = dim_val(f.points[1], dim);
+        const auto p2_val = dim_val(f.points[2], dim);
+        return std::max(p0_val, std::max(p1_val, p2_val));
     }
 
     /**
      * \brief Try to find the partition with the lower SAH heuristic
      */
     template <typename Titerator>
-    static __host__ auto find_partition(Titerator begin, Titerator end)
+    static __host__ auto find_partition(unsigned int sort_dim, Titerator begin, Titerator end)
     {
-        // Generate an axis along which face are spread
-        const auto sort_axis = rand::unit_sphere_uniform();
-
         // Sort the faces according to the axis
         std::sort(
             begin, end,
-            [&sort_axis](const bvh_builder_input& f1, const bvh_builder_input& f2) -> bool
+            [sort_dim](const bvh_builder_input& f1, const bvh_builder_input& f2) -> bool
             {
-                return face_axis_value(f1.face->geo, sort_axis) >
-                       face_axis_value(f2.face->geo, sort_axis);
+                return face_axis_value(f1.face->geo, sort_dim) >
+                       face_axis_value(f2.face->geo, sort_dim);
             });
 
         // Compute all the boxes
@@ -157,16 +157,17 @@ namespace Xrender
      * \brief Build a branch with the given faces (The must be more than one face)
      */
     template <typename Titerator>
-    static __host__ std::unique_ptr<host_bvh_tree> build_branch(Titerator begin, Titerator end)
+    static __host__ std::unique_ptr<host_bvh_tree> build_branch(unsigned int sort_dim, Titerator begin, Titerator end)
     {
         // find best partition and build childs
-        const auto partition = find_partition(begin, end);
+        const auto partition = find_partition(sort_dim, begin, end);
+        const auto next_sort_dim = (sort_dim + 1u) % 3u;
 
         // Build node
         auto branch = std::make_unique<host_bvh_tree>();
         branch->box = make_aabb_box(begin, end);
-        branch->left_child = build_node(begin, partition);
-        branch->right_child = build_node(partition, end);
+        branch->left_child = build_node(next_sort_dim, begin, partition);
+        branch->right_child = build_node(next_sort_dim, partition, end);
 
         return branch;
     }
@@ -175,7 +176,7 @@ namespace Xrender
      * \brief Build a node with the given faces
      */
     template <typename Titerator>
-    static __host__ host_bvh_tree::node build_node(Titerator begin, Titerator end)
+    static __host__ host_bvh_tree::node build_node(unsigned int sort_dim, Titerator begin, Titerator end)
     {
         // Only one face
         if (begin + 1 == end)
@@ -185,7 +186,7 @@ namespace Xrender
         }
         else
         {
-            return build_branch(begin, end);
+            return build_branch(sort_dim, begin, end);
         }
     }
 
@@ -199,7 +200,7 @@ namespace Xrender
             geometry.begin(), geometry.end(), builder_input.begin(),
             [](const auto& f) { return bvh_builder_input{&f}; });
 
-        return build_branch(builder_input.begin(), builder_input.end());
+        return build_branch(0u, builder_input.begin(), builder_input.end());
     }
 
 }
