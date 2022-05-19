@@ -101,10 +101,10 @@ namespace Xrender
      */
     static __host__ float face_axis_value(const triangle& f, const unsigned int dim)
     {
-        return
-            dim_val(f.points[0], dim) +
-            dim_val(f.points[1], dim) +
-            dim_val(f.points[2], dim);
+        const auto p0_val = dim_val(f.points[0], dim);
+        const auto p1_val = dim_val(f.points[1], dim);
+        const auto p2_val = dim_val(f.points[2], dim);
+        return std::max(p0_val, std::max(p1_val, p2_val));
     }
 
     /**
