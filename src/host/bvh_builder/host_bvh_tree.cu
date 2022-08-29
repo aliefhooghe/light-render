@@ -22,7 +22,9 @@ namespace Xrender
         const auto branch_root_index = gpu_tree.size();
         const bool skip_box =
             (parent_box != nullptr) &&
-            ((aabb_box_half_area(host_branch.box) / aabb_box_half_area(*parent_box)) > 0.8f);
+            ((aabb_box_half_area(host_branch.box) / aabb_box_half_area(*parent_box)) > 0.60f);
+        const aabb_box *next_parent_box = skip_box ?
+            parent_box : &host_branch.box;
 
         // Push root
         if (!skip_box)
@@ -34,10 +36,10 @@ namespace Xrender
         }
 
         // Push left child
-        _push_node(gpu_tree, gpu_model, &host_branch.box, host_branch.left_child);
+        _push_node(gpu_tree, gpu_model, next_parent_box, host_branch.left_child);
 
         // Push right child
-        _push_node(gpu_tree, gpu_model, &host_branch.box, host_branch.right_child);
+        _push_node(gpu_tree, gpu_model, next_parent_box, host_branch.right_child);
 
         if (!skip_box)
         {
