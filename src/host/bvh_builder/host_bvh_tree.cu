@@ -3,48 +3,62 @@
 #include <iostream>
 
 #include "host_bvh_tree.cuh"
+#include "bvh_builder.cuh"
 
 namespace Xrender
 {
     __host__ static void _push_node(
         std::vector<bvh_node>& gpu_tree,
         std::vector<face>& gpu_model,
+        const aabb_box *parent_box,
         const host_bvh_tree::node& host_node);
 
     __host__ static void _push_branch(
         std::vector<bvh_node>& gpu_tree,
         std::vector<face>& gpu_model,
+        const aabb_box *parent_box,
         const host_bvh_tree& host_branch)
     {
-        // Push root
-        bvh_node gpu_node;
-        gpu_node.type = bvh_node::BOX;
-        gpu_node.node.box = host_branch.box;
-
         const auto branch_root_index = gpu_tree.size();
-        gpu_tree.emplace_back(std::move(gpu_node));
+        const bool skip_box =
+            (parent_box != nullptr) &&
+            ((aabb_box_half_area(host_branch.box) / aabb_box_half_area(*parent_box)) > 0.8f);
+
+        // Push root
+        if (!skip_box)
+        {
+            bvh_node gpu_node;
+            gpu_node.type = bvh_node::BOX;
+            gpu_node.node.box = host_branch.box;
+            gpu_tree.emplace_back(std::move(gpu_node));
+        }
 
         // Push left child
-        _push_node(gpu_tree, gpu_model, host_branch.left_child);
+        _push_node(gpu_tree, gpu_model, &host_branch.box, host_branch.left_child);
 
         // Push right child
-        _push_node(gpu_tree, gpu_model, host_branch.right_child);
+        _push_node(gpu_tree, gpu_model, &host_branch.box, host_branch.right_child);
 
-        // Update branch root skip index
-        gpu_tree[branch_root_index].node.skip_index = gpu_tree.size();
+        if (!skip_box)
+        {
+            // Update branch root skip index
+            gpu_tree[branch_root_index].node.skip_index = gpu_tree.size();
+        }
     }
 
     __host__ static void _push_child(
         std::vector<bvh_node>& gpu_tree,
         std::vector<face>& gpu_model,
+        const aabb_box *parent_box,
         const host_bvh_tree::parent& host_parent)
     {
-        _push_branch(gpu_tree, gpu_model, *host_parent);
+        _push_branch(gpu_tree, gpu_model, parent_box, *host_parent);
     }
 
     __host__ static void _push_child(
         std::vector<bvh_node>& gpu_tree,
         std::vector<face>& gpu_model,
+        const aabb_box *parent_box,
         const host_bvh_tree::leaf& host_leaf)
     {
         // Push face on gpu model
@@ -61,10 +75,14 @@ namespace Xrender
     __host__ static void _push_node(
         std::vector<bvh_node>& gpu_tree,
         std::vector<face>& gpu_model,
+        const aabb_box *parent_box,
         const host_bvh_tree::node& host_node)
     {
         std::visit(
-            [&gpu_tree, &gpu_model](auto& child) { _push_child(gpu_tree, gpu_model, child);},
+            [&gpu_tree, &gpu_model, parent_box](auto& child)
+            {
+                _push_child(gpu_tree, gpu_model, parent_box, child);
+            },
             host_node);
     }
 
@@ -74,7 +92,7 @@ namespace Xrender
         std::vector<face> gpu_model{};
 
         // Push the root on the tree
-        _push_branch(gpu_tree, gpu_model, *this);
+        _push_branch(gpu_tree, gpu_model, nullptr, *this);
 
         // Change index that skip to the end at -1
         gpu_tree.shrink_to_fit();

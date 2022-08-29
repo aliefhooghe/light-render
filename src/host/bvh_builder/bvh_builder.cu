@@ -51,7 +51,7 @@ namespace Xrender
     /**
      * \brief return half the surface of a aabb box
      */
-    static __host__ float aabb_box_half_area(const aabb_box &box)
+    __host__ float aabb_box_half_area(const aabb_box &box)
     {
         const auto lengths = box.ext_max - box.ext_min;
         return (lengths.x * lengths.y +
