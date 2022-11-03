@@ -62,7 +62,7 @@ namespace Xrender
          */
         static std::unique_ptr<renderer_frontend> build_renderer_frontend(
             const render_configuration& configuration,
-            GLuint texture_id);
+            GLuint texture_id = GL_INVALID_VALUE);
 
         /**
          *      Camera api
