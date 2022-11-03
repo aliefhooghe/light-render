@@ -12,7 +12,9 @@
 
 namespace Xrender
 {
-    __global__ void preview_integrate_kernel(
+    __global__
+    __launch_bounds__(preview_renderer::max_thread_per_block)
+    void preview_integrate_kernel(
         const bvh_node *tree, int tree_size,
         const face *geometry,
         const material *mtl_bank,
@@ -64,20 +66,18 @@ namespace Xrender
     preview_renderer::preview_renderer(
         const bvh_node *device_tree, int tree_size,
         const face *device_model,
-        const material *device_mtl_bank,
-        std::size_t thread_per_block)
+        const material *device_mtl_bank)
         : _device_tree{device_tree},
           _tree_size{tree_size},
           _device_model{device_model},
-          _device_mtl_bank{device_mtl_bank},
-          _thread_per_block{thread_per_block}
+          _device_mtl_bank{device_mtl_bank}
     {
     }
 
     void preview_renderer::call_integrate_kernel(
         const camera &cam, curandState_t *rand_pool, std::size_t sample_count, float3 *sensor)
     {
-        unsigned int thread_per_block = _thread_per_block;
+        unsigned int thread_per_block = max_thread_per_block;
         const auto grid_dim = image_grid_dim(
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
