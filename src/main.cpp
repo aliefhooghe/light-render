@@ -36,7 +36,7 @@ int main(int argc, char **argv)
         auto renderer_frontend = Xrender::renderer_frontend::build_renderer_frontend(config);
         const auto id = renderer_frontend->get_current_renderer();
 
-        const auto renderer_id = 1;
+        const auto renderer_id = 0;
         renderer_frontend->set_current_renderer(renderer_id);
 
         const auto& desc = renderer_frontend->get_renderer_descriptor(renderer_id);
