@@ -89,7 +89,7 @@ namespace Xrender
         std::vector<worker_descriptor> _developpers_settings{};
 
         // OpenGL texture registered for display
-        registered_texture _registered_texture;
+        std::unique_ptr<registered_texture> _registered_texture;
     };
 
     /**
@@ -101,16 +101,19 @@ namespace Xrender
         const host_bvh_tree::gpu_compatible_bvh &bvh,
         const std::vector<material>& mtl_bank,
         GLuint texture_id)
-    :   _camera{cam},
-        _registered_texture{texture_id, cam.get_image_width(), cam.get_image_height()}
+    :   _camera{cam}
     {
         _device_tree = clone_to_device(bvh.tree);
         _tree_size = bvh.tree.size();
         _device_geometry = clone_to_device(bvh.geometry);
         _device_mtl_bank = clone_to_device(mtl_bank);
 
-        // Add average developer
+        if (texture_id != GL_INVALID_VALUE)
         {
+            _registered_texture = std::make_unique<registered_texture>(
+                texture_id, cam.get_image_width(), cam.get_image_height());
+
+            // Add average developer
             auto average_developer = std::make_unique<average_image_developer>();
             auto *average_dev = average_developer.get();
 
@@ -124,10 +127,8 @@ namespace Xrender
                     }
                 },
                 std::move(average_developer));
-        }
 
-        // Add gamma developer
-        {
+            // Add gamma developer
             auto gamma_developer = std::make_unique<gamma_image_developer>();
             auto *gamma_dev = gamma_developer.get();
 
@@ -232,8 +233,6 @@ namespace Xrender
         _reset_current_renderer();
     }
 
-
-
     void renderer_frontend_implementation::integrate_for(const std::chrono::milliseconds &max_duration)
     {
         if (_current_renderer >= get_renderer_count())
@@ -243,10 +242,12 @@ namespace Xrender
 
     void renderer_frontend_implementation::develop_image()
     {
-        if (_current_developer >= get_developer_count() || _current_renderer >= get_renderer_count())
+        if (_registered_texture == nullptr ||
+            _current_developer >= get_developer_count() ||
+            _current_renderer >= get_renderer_count())
             return;
 
-        auto mapped_surface = _registered_texture.get_mapped_surface();
+        auto mapped_surface = _registered_texture->get_mapped_surface();
         auto &renderer = _renderers[_current_renderer];
 
         _developpers[_current_developer]->call_develop_to_texture_kernel(
@@ -262,7 +263,10 @@ namespace Xrender
 
     std::vector<rgb24> renderer_frontend_implementation::get_image()
     {
-        const auto host_texture = _registered_texture.retrieve_texture();
+        if (_registered_texture == nullptr)
+            throw new std::runtime_error("renderer_frontend is unable to get image: no texture was registered.");
+
+        const auto host_texture = _registered_texture->retrieve_texture();
         std::vector<rgb24> image{host_texture.size()};
 
         // Convert to 24 bit bitmap samples
@@ -340,7 +344,7 @@ namespace Xrender
 
     std::unique_ptr<renderer_frontend> renderer_frontend::build_renderer_frontend(const render_configuration &configuration, GLuint texture_id)
     {
-        if (!select_openGL_cuda_device())
+        if (texture_id != GL_INVALID_VALUE && !select_openGL_cuda_device())
             throw std::runtime_error("No cuda capable device was found");
 
         // Load model
