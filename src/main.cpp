@@ -43,7 +43,7 @@ int main(int argc, char **argv)
         std::cout << "Using renderer " << desc.name() << std::endl;
 
         const auto interval = 500;
-        const auto total = 60000;
+        const auto total = 10000;
         auto sum = 0;
         while (sum < total)
         {
