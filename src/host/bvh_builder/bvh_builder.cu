@@ -129,24 +129,29 @@ namespace Xrender
         // Find the best partition
         const auto count = end - begin;
         auto best_pivot = begin + 1;
+
+        auto best_left_sah = INFINITY;
+        auto best_right_sah = INFINITY;
         auto best_sah = INFINITY;
 
         for (auto it = begin + 1; it != end - 1; ++it)
         {
-            const float left_count = it - begin;
-            const float right_count = end - it;
-            const float sah =
-                (float)left_count * aabb_box_half_area((it - 1)->boxes[0]) +
-                (float)right_count * aabb_box_half_area(it->boxes[1]);
+            const float left_count = static_cast<float>(it - begin);
+            const float right_count = static_cast<float>(end - it);
+            const float left_sah = left_count * aabb_box_half_area((it - 1)->boxes[0]);
+            const float right_sah = right_count * aabb_box_half_area(it->boxes[1]);
+            const float sah = left_sah + right_sah;
 
             if (sah < best_sah)
             {
                 best_pivot = it;
                 best_sah = sah;
+                best_left_sah = left_sah;
+                best_right_sah = right_sah;
             }
         }
 
-        return best_pivot;
+        return std::make_tuple(best_pivot, best_left_sah, best_right_sah);
     }
 
 
@@ -160,14 +165,26 @@ namespace Xrender
     static __host__ std::unique_ptr<host_bvh_tree> build_branch(unsigned int sort_dim, Titerator begin, Titerator end)
     {
         // find best partition and build childs
-        const auto partition = find_partition(sort_dim, begin, end);
+        const auto [partition, left_sah, right_sah] = find_partition(sort_dim, begin, end);
         const auto next_sort_dim = (sort_dim + 1u) % 3u;
 
         // Build node
         auto branch = std::make_unique<host_bvh_tree>();
+        auto child1 = build_node(next_sort_dim, begin, partition);
+        auto child2 = build_node(next_sort_dim, partition, end);
+
         branch->box = make_aabb_box(begin, end);
-        branch->left_child = build_node(next_sort_dim, begin, partition);
-        branch->right_child = build_node(next_sort_dim, partition, end);
+
+        if (left_sah <= right_sah)
+        {
+            branch->left_child = std::move(child1);
+            branch->right_child = std::move(child2);
+        }
+        else
+        {
+            branch->left_child = std::move(child2);
+            branch->right_child = std::move(child1);
+        }
 
         return branch;
     }
