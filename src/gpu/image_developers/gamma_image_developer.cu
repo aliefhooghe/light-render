@@ -6,6 +6,30 @@
 
 namespace Xrender
 {
+    static __device__ inline float3 rgb2yuv(const float3& c)
+    {
+        return make_float3(
+            0.2126f   * c.x + 0.7152f  * c.y + 0.0722f  * c.z,
+            -0.09991f * c.x - 0.33609f * c.y + 0.436f   * c.z,
+            0.615f    * c.x - 0.55861f * c.y - 0.05639f * c.z
+        );
+    }
+
+    static __device__ inline float3 yuv2rgb(const float3& c)
+    {
+        return make_float3(
+            c.x                  + 1.28033f * c.z,
+            c.x - 0.21482f * c.y - 0.38059f * c.z,
+            c.x + 2.12798f * c.y);
+    }
+
+    static __device__ inline float3 gamma_correction(const float3& rgb, float gamma)
+    {
+        auto yuv = rgb2yuv(rgb);
+        yuv.x = powf(yuv.x, gamma);
+        return yuv2rgb(yuv);
+    }
+
     __global__ void gamma_develop_to_surface_kernel(
         const float3 *sensor, cudaSurfaceObject_t surface, float factor, float gamma, const int width)
     {
@@ -15,15 +39,8 @@ namespace Xrender
 
         if (x < width) {
             const int pixel_index = x + y * width;
-
-            const auto rgb_value = sensor[pixel_index] * factor;
-            const float4 rgba_value = {
-                powf(fmin(rgb_value.x, 1.f), gamma),
-                powf(fmin(rgb_value.y, 1.f), gamma),
-                powf(fmin(rgb_value.z, 1.f), gamma),
-                1.f
-            };
-
+            const auto rgb_val = gamma_correction(factor * sensor[pixel_index], gamma);
+            const auto rgba_value =  make_float4(rgb_val.x, rgb_val.y, rgb_val.z, 1.f);
             surf2Dwrite(rgba_value, surface, x * sizeof(float4), y);
         }
     }
