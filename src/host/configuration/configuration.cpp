@@ -1,38 +1,22 @@
 
 #include <fstream>
 #include <iostream>
+#include <nlohmann/json.hpp>
 
 #include "configuration.h"
 
 namespace Xrender
 {
-    static void parse_line(const std::string& line, render_configuration& config)
-    {
-        char path[256];
-
-        if (std::sscanf(line.c_str(), "model_path=%s\n", path) == 1)
-        {
-            config.model_path = path;
-        }
-        else if (std::sscanf(line.c_str(), "focal_length=%f\n", &config.camera_config.focal_length) == 1);
-        else if (std::sscanf(line.c_str(), "focus_distance=%f\n", &config.camera_config.focus_distance) == 1);
-        else if (std::sscanf(line.c_str(), "diaphragm_radius=%f\n", &config.camera_config.diaphragm_radius) == 1);
-        else if (std::sscanf(line.c_str(), "sensor_width=%f\n", &config.camera_config.sensor_width) == 1);
-        else if (std::sscanf(line.c_str(), "image_width=%u\n", &config.camera_config.image_width) == 1)
-        {
-            // be sure to have an even size
-            config.camera_config.image_width &= ~1;
-        }
-        else if (std::sscanf(line.c_str(), "image_height=%u\n", &config.camera_config.image_height ) == 1)
-        {
-
-            config.camera_config.image_height &= ~1;
-        }
-        else
-        {
-            // unhandled line
-        }
-    }
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(camera_configuration,
+        focal_length,
+        focus_distance,
+        diaphragm_radius,
+        sensor_width,
+        image_width,
+        image_height)
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(render_configuration,
+        model_path,
+        camera_config)
 
     render_configuration load_render_configuration(const std::filesystem::path &config_path)
     {
@@ -41,11 +25,13 @@ namespace Xrender
 
         if (stream.is_open() && stream.good())
         {
-            std::string line;
-            while (stream >> line)
-            {
-                parse_line(line, config);
-            }
+            nlohmann::json json;
+            stream >> json;
+            from_json(json, config);
+
+            // make sure image dimensions are even
+            config.camera_config.image_width &= ~1u;
+            config.camera_config.image_height &= ~1u;
         }
         else
         {

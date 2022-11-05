@@ -8,6 +8,7 @@ set(CMAKE_CUDA_ARCHITECTURES 86)
 find_package(OpenGL REQUIRED)
 find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -77,4 +78,6 @@ target_link_libraries(xrender PUBLIC
     SDL2::SDL2
     OpenGL::GL
     OpenGL::GLU
-    GLEW::GLEW)
+    GLEW::GLEW
+    nlohmann_json::nlohmann_json
+    nlohmann_json)
