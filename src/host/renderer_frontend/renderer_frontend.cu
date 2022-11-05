@@ -153,7 +153,7 @@ namespace Xrender
 
         _add_renderer(
             {"Path Tracer", {}},
-            std::make_unique<naive_mc_renderer>(_device_tree, _tree_size, _device_geometry, _device_mtl_bank));
+            std::make_unique<naive_mc_renderer>(_device_tree, _tree_size, _device_geometry, _device_mtl_bank, mtl_bank.size()));
     }
 
     renderer_frontend_implementation::~renderer_frontend_implementation() noexcept
@@ -362,10 +362,10 @@ namespace Xrender
         const auto gpu_bvh = host_bvh->to_gpu_bvh();
         const auto bvh_build_duration = timewatch.stop();
         std::cout << "Bvh build took " << bvh_build_duration.count() << " ms" << std::endl;
-        std::cout << "Bvh tree max depth is " << host_bvh->max_depth() << std::endl;
-        std::cout << "GPU bvh tree size is  : " << gpu_bvh.tree.size() << std::endl;
-        std::cout << "GPU bvh model size is : " << gpu_bvh.geometry.size() << std::endl;
-
+        std::cout << "Bvh tree max depth : " << host_bvh->max_depth() << std::endl;
+        std::cout << "GPU bvh tree size  : " << gpu_bvh.tree.size() << std::endl;
+        std::cout << "GPU bvh model size : " << gpu_bvh.geometry.size() << std::endl;
+        std::cout << "Mtl count          : " << model.mtl_bank.size() << std::endl;
         // Configure camera
         camera cam{};
         configure_camera(configuration.camera_config, cam);

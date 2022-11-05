@@ -19,7 +19,7 @@ namespace Xrender
         __host__ naive_mc_renderer(
             const bvh_node *device_tree, int tree_size,
             const face *device_model,
-            const material *device_mtl_bank);
+            const material *device_mtl_bank, int mtl_count);
 
         naive_mc_renderer(const naive_mc_renderer &) = delete;
         naive_mc_renderer(naive_mc_renderer &&) noexcept = default;
@@ -33,6 +33,7 @@ namespace Xrender
         const int _tree_size{0};
         const face *_device_model{nullptr};
         const material *_device_mtl_bank{nullptr};
+        const int _mtl_count{0};
     };
 
 }
