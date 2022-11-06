@@ -35,7 +35,7 @@ namespace Xrender
         a = dot(edge1, h);
         if (fabs(a) < EPSILON)
             return false; // This ray is parallel to this triangle.
-        f = 1.0f / a;
+        f = __frcp_rn(a); // = 1/a in nearest mode (even with fast-math)
         s = pos + EPSILON * dir - point0;
         u = f * dot(s, h);
         if (u < 0.f || u > 1.f)
