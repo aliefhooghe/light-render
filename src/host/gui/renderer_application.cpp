@@ -90,7 +90,7 @@ namespace Xrender
         while (!_handle_events())
         {
             const auto render_duration =
-                std::chrono::milliseconds(_fast_mode ? 10000 : 125 /* 8 fps */);
+                std::chrono::milliseconds(_fast_mode ? 10000 : 20 /* 50 fps */);
 
             _renderer->integrate_for(render_duration);
             _renderer->develop_image();
@@ -306,15 +306,15 @@ namespace Xrender
             switch (event.type)
             {
                 case SDL_KEYDOWN:
-                    if (!ImGui::GetIO().WantCaptureKeyboard)
+                    if (!_freeze_camera_rotation || !ImGui::GetIO().WantCaptureKeyboard)
                         _handle_key_down(event.key.keysym);
                     break;
                 case SDL_MOUSEWHEEL:
-                    if (!ImGui::GetIO().WantCaptureMouse)
+                    if (!_freeze_camera_rotation || !ImGui::GetIO().WantCaptureMouse)
                         _handle_mouse_wheel(event.wheel.y > 0);
                     break;
                 case SDL_MOUSEMOTION:
-                    if (!ImGui::GetIO().WantCaptureMouse)
+                    if (!_freeze_camera_rotation || !ImGui::GetIO().WantCaptureMouse)
                         _handle_mouse_motion(event.motion.xrel, event.motion.yrel);
                     break;
                 case SDL_QUIT:
@@ -325,7 +325,8 @@ namespace Xrender
                         _update_size();
                     break;
             }
-            ImGui_ImplSDL2_ProcessEvent(&event);
+            if (_freeze_camera_rotation)
+                ImGui_ImplSDL2_ProcessEvent(&event);
         }
 
         return false;
@@ -334,11 +335,14 @@ namespace Xrender
     void renderer_application::_draw()
     {
         // Prepare gui frame
-        ImGui_ImplOpenGL2_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
-        ImGui::ShowDemoWindow();
-        ImGui::Render(); // Prepare data for rendering
+        if (_freeze_camera_rotation)
+        {
+            ImGui_ImplOpenGL2_NewFrame();
+            ImGui_ImplSDL2_NewFrame();
+            ImGui::NewFrame();
+            ImGui::ShowDemoWindow();
+            ImGui::Render(); // Prepare data for rendering
+        }
 
         glClearColor(1.f, 0.f, 1.f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -353,7 +357,8 @@ namespace Xrender
         glEnd();
 
         // Draw the gui
-        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+        if (_freeze_camera_rotation)
+            ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
         SDL_GL_SwapWindow(_window);
     }
