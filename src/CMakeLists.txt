@@ -22,6 +22,9 @@ set(IMGUI_SRC
     # ImGui Backend
     ${IMGUI_DIR}/backends/imgui_impl_sdl.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl2.cpp
+
+    # Demo windows (testing purpose)
+    ${IMGUI_DIR}/imgui_demo.cpp
 )
 
 # Declare the renderer target

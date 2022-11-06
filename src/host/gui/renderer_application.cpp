@@ -7,6 +7,10 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
 
+#include <imgui.h>
+#include <imgui_impl_sdl.h>
+#include <imgui_impl_opengl2.h>
+
 #include "host/bitmap/bitmap.h"
 #include "renderer_application.h"
 
@@ -24,15 +28,14 @@ namespace Xrender
         const auto width = config.camera_config.image_width;
         const auto height = config.camera_config.image_height;
 
-        _window = SDL_CreateWindow(
-            "Xrender", 0, 0,
-            width, height,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+        const auto windows_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+        _window = SDL_CreateWindow("Xrender", 0, 0, width, height, windows_flags);
 
         // Hide the windows until the render is not ready to start
         SDL_HideWindow(_window);
 
         _gl_context = SDL_GL_CreateContext(_window);
+        SDL_GL_MakeCurrent(_window, _gl_context);
 
         GLenum glew_error = glewInit();
         if (glew_error != GLEW_OK)
@@ -40,11 +43,14 @@ namespace Xrender
             throw std::runtime_error(reinterpret_cast<const char*>(glewGetErrorString(glew_error)));
         }
 
-        //
+        // Setup windows
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
-        // Create openGL texture to develop into
+        // Create openGL texture to develop the rendered image into
         glGenTextures(1, &_texture);
         glBindTexture(GL_TEXTURE_2D, _texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -52,7 +58,15 @@ namespace Xrender
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glEnable(GL_TEXTURE_2D);
 
+        // Initialize the renderer
         _renderer = renderer_frontend::build_renderer_frontend(config, _texture);
+
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGui::StyleColorsDark();
+        ImGui_ImplSDL2_InitForOpenGL(_window, _gl_context);
+        ImGui_ImplOpenGL2_Init();
 
         SDL_ShowWindow(_window);
         _update_size();
@@ -61,6 +75,9 @@ namespace Xrender
     renderer_application::~renderer_application() noexcept
     {
         // Renderer must be reset to unmap the texture
+        ImGui_ImplOpenGL2_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
         _renderer.reset();
         glDeleteTextures(1, &_texture);
         SDL_GL_DeleteContext(_gl_context);
@@ -286,6 +303,7 @@ namespace Xrender
     {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+            ImGui_ImplSDL2_ProcessEvent(&event);
             switch (event.type)
             {
                 case SDL_KEYDOWN:       _handle_key_down(event.key.keysym); break;
@@ -304,26 +322,27 @@ namespace Xrender
 
     void renderer_application::_draw()
     {
+        // Prepare gui frame
+        ImGui_ImplOpenGL2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+        ImGui::ShowDemoWindow();
+        ImGui::Render(); // Prepare data for rendering
+
         glClearColor(1.f, 0.f, 1.f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // Draw the sensor texture
         glBindTexture(GL_TEXTURE_2D, _texture);
-
         glBegin(GL_QUADS);
-
-        glVertex2i(0, 0);
-        glTexCoord2i(1, 0);
-
-        glVertex2i(1, 0);
-        glTexCoord2i(1, 1);
-
-        glVertex2i(1, 1);
-        glTexCoord2i(0, 1);
-
-        glVertex2i(0, 1);
-        glTexCoord2i(0, 0);
-
+        glVertex2i(0, 0); glTexCoord2i(1, 0);
+        glVertex2i(1, 0); glTexCoord2i(1, 1);
+        glVertex2i(1, 1); glTexCoord2i(0, 1);
+        glVertex2i(0, 1); glTexCoord2i(0, 0);
         glEnd();
+
+        // Draw the gui
+        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
         SDL_GL_SwapWindow(_window);
     }
