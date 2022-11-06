@@ -459,10 +459,12 @@ namespace Xrender
 
     void renderer_frontend::set_current_worker(worker_type type, std::size_t worker_id)
     {
-        if (type == worker_type::Developer)
-            return _implementation->set_current_developer(worker_id);
+        if (worker_id == get_current_worker(type))
+            return;
+        else if (type == worker_type::Developer)
+            _implementation->set_current_developer(worker_id);
         else
-            return _implementation->set_current_renderer(worker_id);
+            _implementation->set_current_renderer(worker_id);
     }
 
     std::size_t renderer_frontend::get_current_worker(worker_type type) const
