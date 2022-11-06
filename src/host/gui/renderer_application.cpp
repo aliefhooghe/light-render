@@ -303,18 +303,29 @@ namespace Xrender
     {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
             switch (event.type)
             {
-                case SDL_KEYDOWN:       _handle_key_down(event.key.keysym); break;
-                case SDL_MOUSEWHEEL:    _handle_mouse_wheel(event.wheel.y > 0); break;
-                case SDL_MOUSEMOTION:   _handle_mouse_motion(event.motion.xrel, event.motion.yrel); break;
-                case SDL_QUIT:          return true; break;
-
+                case SDL_KEYDOWN:
+                    if (!ImGui::GetIO().WantCaptureKeyboard)
+                        _handle_key_down(event.key.keysym);
+                    break;
+                case SDL_MOUSEWHEEL:
+                    if (!ImGui::GetIO().WantCaptureMouse)
+                        _handle_mouse_wheel(event.wheel.y > 0);
+                    break;
+                case SDL_MOUSEMOTION:
+                    if (!ImGui::GetIO().WantCaptureMouse)
+                        _handle_mouse_motion(event.motion.xrel, event.motion.yrel);
+                    break;
+                case SDL_QUIT:
+                    return true;
+                    break;
                 case SDL_WINDOWEVENT:
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED)
                         _update_size();
+                    break;
             }
+            ImGui_ImplSDL2_ProcessEvent(&event);
         }
 
         return false;
