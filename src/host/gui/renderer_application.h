@@ -20,16 +20,16 @@ namespace Xrender {
         void execute();
 
     private:
-        void _next_setting();
+        void _next_camera_setting();
+        void _handle_camera_mouse_wheel(bool up);
+        void _handle_camera_mouse_motion(int xrel, int yrel);
         void _handle_key_down(SDL_Keysym key);
-        void _handle_mouse_wheel(bool up);
-        void _handle_mouse_motion(int xrel, int yrel);
         bool _handle_events();
         void _draw();
         void _update_size();
 
         void _switch_fast_mode();
-        void _switch_rotation();
+        void _switch_mouse_mode();
         void _save_current_image();
 
         SDL_Window *_window{nullptr};
@@ -39,7 +39,11 @@ namespace Xrender {
         std::unique_ptr<renderer_gui> _gui;
         bool _fast_mode{false};
 
-        // control mode
+        enum class mouse_mode
+        {
+            GUI,
+            CAMERA
+        };
 
         enum class camera_setting
         {
@@ -48,10 +52,8 @@ namespace Xrender {
             DIAPHRAGM_RADIUS
         };
 
-        camera_setting _camera_setting{camera_setting::SENSOR_LENS_DISTANCE};
-        std::size_t _control_setting_id{0u};
-        bool _freeze_camera_rotation{true};
-
+        mouse_mode _mouse_mode{mouse_mode::GUI};
+        camera_setting _camera_mouse_wheel_setting{camera_setting::FOCAL_LENGTH};
         float _camera_theta{0.f};
         float _camera_phi{0.f};
     };

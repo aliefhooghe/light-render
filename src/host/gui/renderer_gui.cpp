@@ -34,10 +34,10 @@ namespace Xrender {
             _draw_status_panel();
         }
 
-        if (ImGui::CollapsingHeader("Widget Demo"))
-        {
-            ImGui::ShowDemoWindow();
-        }
+        // if (ImGui::CollapsingHeader("Widget Demo"))
+        // {
+        //     ImGui::ShowDemoWindow();
+        // }
 
         ImGui::End();
     }
@@ -86,13 +86,15 @@ namespace Xrender {
         ImGui::TextColored(color, "speed      : %.1f spp/sec", status.spp_per_second);
         ImGui::Separator();
 
-        // ImGui::ProgressBar(static_cast<float>(status.total_integrated_sample) / 1000.0);
-
         // Print a graph of speeds
         _speed_values[_speed_offset] = status.spp_per_second;
         _speed_offset = (_speed_offset + 1) % speed_buffer_size;
         ImGui::PlotHistogram(
             "rendering speed", _speed_values.data(), speed_buffer_size, _speed_offset,
             "spp/sec", 0, FLT_MAX, ImVec2(0, 96.f));
+
+        // Print a progress bar
+        ImGui::Separator();
+        ImGui::ProgressBar(static_cast<float>(status.total_integrated_sample) / 1000.0);
     }
 }

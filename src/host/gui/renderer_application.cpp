@@ -91,7 +91,7 @@ namespace Xrender
         while (!_handle_events())
         {
             const auto render_duration =
-                std::chrono::milliseconds(_fast_mode ? 10000 : 20 /* 50 fps */);
+                std::chrono::milliseconds(_fast_mode ? 10000 : 64 /* 15 fps */);
 
             _renderer->integrate_for(render_duration);
             _renderer->develop_image();
@@ -100,24 +100,24 @@ namespace Xrender
     }
 
 
-    void renderer_application::_next_setting()
+    void renderer_application::_next_camera_setting()
     {
         std::cout << "\nSwitch to camera setting ";
-        switch (_camera_setting)
+        switch (_camera_mouse_wheel_setting)
         {
         case camera_setting::SENSOR_LENS_DISTANCE:
             std::cout << "focal length" << std::endl;
-            _camera_setting = camera_setting::FOCAL_LENGTH;
+            _camera_mouse_wheel_setting = camera_setting::FOCAL_LENGTH;
             break;
 
         case camera_setting::FOCAL_LENGTH:
             std::cout << "diaphragm radius" << std::endl;
-            _camera_setting = camera_setting::DIAPHRAGM_RADIUS;
+            _camera_mouse_wheel_setting = camera_setting::DIAPHRAGM_RADIUS;
             break;
 
         case camera_setting::DIAPHRAGM_RADIUS:
             std::cout << "sensor-lens distance" << std::endl;
-            _camera_setting = camera_setting::SENSOR_LENS_DISTANCE;
+            _camera_mouse_wheel_setting = camera_setting::SENSOR_LENS_DISTANCE;
             break;
 
         default:
@@ -132,7 +132,7 @@ namespace Xrender
         switch (key.sym)
         {
             case SDLK_TAB:
-                _next_setting();
+                _next_camera_setting();
                 break;
 
             case SDLK_BACKSPACE:
@@ -168,14 +168,14 @@ namespace Xrender
                 break;
 
             case SDLK_r:
-                _switch_rotation();
+                _switch_mouse_mode();
                 break;
         }
     }
 
-    void renderer_application::_handle_mouse_wheel(bool up)
+    void renderer_application::_handle_camera_mouse_wheel(bool up)
     {
-        switch (_camera_setting)
+        switch (_camera_mouse_wheel_setting)
         {
             case camera_setting::SENSOR_LENS_DISTANCE:
                 _renderer->scale_sensor_lens_distance(up, 1.0001f);
@@ -194,34 +194,32 @@ namespace Xrender
         }
     }
 
-    void renderer_application::_handle_mouse_motion(int xrel, int yrel)
+    void renderer_application::_handle_camera_mouse_motion(int xrel, int yrel)
     {
-        if (!_freeze_camera_rotation)
-        {
-            constexpr auto factor = 0.001f;
-            _camera_phi -= factor * xrel;
-            _camera_theta -= factor * yrel;
-            _renderer->camera_rotate(_camera_theta, _camera_phi);
-        }
+        constexpr auto factor = 0.001f;
+        _camera_phi -= factor * xrel;
+        _camera_theta -= factor * yrel;
+        _renderer->camera_rotate(_camera_theta, _camera_phi);
     }
 
     bool renderer_application::_handle_events()
     {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+
             switch (event.type)
             {
                 case SDL_KEYDOWN:
-                    if (!_freeze_camera_rotation || !ImGui::GetIO().WantCaptureKeyboard)
+                    if (_mouse_mode == mouse_mode::CAMERA || !ImGui::GetIO().WantCaptureKeyboard)
                         _handle_key_down(event.key.keysym);
                     break;
                 case SDL_MOUSEWHEEL:
-                    if (!_freeze_camera_rotation || !ImGui::GetIO().WantCaptureMouse)
-                        _handle_mouse_wheel(event.wheel.y > 0);
+                    if (_mouse_mode == mouse_mode::CAMERA)
+                        _handle_camera_mouse_wheel(event.wheel.y > 0);
                     break;
                 case SDL_MOUSEMOTION:
-                    if (!_freeze_camera_rotation || !ImGui::GetIO().WantCaptureMouse)
-                        _handle_mouse_motion(event.motion.xrel, event.motion.yrel);
+                    if (_mouse_mode == mouse_mode::CAMERA)
+                        _handle_camera_mouse_motion(event.motion.xrel, event.motion.yrel);
                     break;
                 case SDL_QUIT:
                     return true;
@@ -231,8 +229,12 @@ namespace Xrender
                         _update_size();
                     break;
             }
-            if (_freeze_camera_rotation)
+
+            if (_mouse_mode == mouse_mode::GUI)
+            {
+                // std::cout << "IMGUI EVENT\n" << std::endl;
                 ImGui_ImplSDL2_ProcessEvent(&event);
+            }
         }
 
         return false;
@@ -241,14 +243,11 @@ namespace Xrender
     void renderer_application::_draw()
     {
         // Prepare gui frame
-        if (_freeze_camera_rotation)
-        {
-            ImGui_ImplOpenGL2_NewFrame();
-            ImGui_ImplSDL2_NewFrame();
-            ImGui::NewFrame();
-            _gui->draw();
-            ImGui::Render(); // Prepare data for rendering
-        }
+        ImGui_ImplOpenGL2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+        _gui->draw();
+        ImGui::Render(); // Prepare data for rendering
 
         glClearColor(1.f, 0.f, 1.f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT);
@@ -263,8 +262,7 @@ namespace Xrender
         glEnd();
 
         // Draw the gui
-        if (_freeze_camera_rotation)
-            ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
         SDL_GL_SwapWindow(_window);
     }
@@ -283,17 +281,20 @@ namespace Xrender
     void renderer_application::_switch_fast_mode()
     {
         _fast_mode = !_fast_mode;
-        if (_fast_mode && !_freeze_camera_rotation)
-            _switch_rotation();
+        if (_fast_mode && _mouse_mode == mouse_mode::CAMERA)
+        {
+            // Disable camera mouse mode during fast mode
+            _switch_mouse_mode();
+        }
         std::cout << "\n" <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
     }
 
-    void renderer_application::_switch_rotation()
+    void renderer_application::_switch_mouse_mode()
     {
-        _freeze_camera_rotation = !_freeze_camera_rotation;
-        std::cout << "\nEnable camera rotation : " << (_freeze_camera_rotation ? "Off" : "On") << std::endl;
-        SDL_SetWindowGrab(_window, static_cast<SDL_bool>(!_freeze_camera_rotation));
-        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(!_freeze_camera_rotation));
+        _mouse_mode = (_mouse_mode == mouse_mode::CAMERA) ? mouse_mode::GUI : mouse_mode::CAMERA;
+        std::cout << "mouse mode become" << ((_mouse_mode == mouse_mode::CAMERA) ? "camera" : "gui") << std::endl;
+        SDL_SetWindowGrab(_window, static_cast<SDL_bool>(_mouse_mode == mouse_mode::CAMERA));
+        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(_mouse_mode == mouse_mode::CAMERA));
     }
 
     void renderer_application::_save_current_image()
