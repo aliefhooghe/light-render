@@ -81,3 +81,5 @@ target_link_libraries(xrender PUBLIC
     GLEW::GLEW
     nlohmann_json::nlohmann_json
     nlohmann_json)
+target_compile_options(xrender PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>)
