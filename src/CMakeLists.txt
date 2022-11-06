@@ -83,6 +83,8 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_gui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_gui.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/renderer_frontend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/renderer_frontend.cu
     ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.h

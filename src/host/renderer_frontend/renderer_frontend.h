@@ -51,6 +51,12 @@ namespace Xrender
             const std::vector<setting> _settings;
         };
 
+        enum class worker_type
+        {
+            Developer,
+            Renderer
+        };
+
         renderer_frontend(renderer_frontend&) = delete;
         renderer_frontend(renderer_frontend&&) noexcept;
         ~renderer_frontend() noexcept;
@@ -99,15 +105,11 @@ namespace Xrender
         /**
          *
          */
-        std::size_t get_renderer_count() const;
-        void set_current_renderer(std::size_t renderer_id);
-        std::size_t get_current_renderer() const;
-        const worker_descriptor& get_renderer_descriptor(std::size_t renderer_id) const;
-
-        std::size_t get_developer_count() const;
-        void set_current_developer(std::size_t developer_id);
-        std::size_t get_current_developer() const;
-        const worker_descriptor& get_developer_descriptor(std::size_t developer_id) const;
+        std::size_t get_worker_count(worker_type type) const;
+        void set_current_worker(worker_type type, std::size_t worker_id);
+        std::size_t get_current_worker(worker_type type) const;
+        const worker_descriptor& get_current_worker_descriptor(worker_type type) const;
+        const worker_descriptor& get_worker_descriptor(worker_type type, std::size_t renderer_id) const;
 
         renderer_frontend(renderer_frontend_implementation* impl);
     private:

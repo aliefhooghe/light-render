@@ -455,45 +455,41 @@ namespace Xrender
         return _implementation->get_image_height();
     }
 
-
-    std::size_t renderer_frontend::get_renderer_count() const
+    std::size_t renderer_frontend::get_worker_count(worker_type type) const
     {
-        return _implementation->get_renderer_count();
+        if (type == worker_type::Developer)
+            return _implementation->get_developer_count();
+        else
+            return _implementation->get_renderer_count();
     }
 
-    void renderer_frontend::set_current_renderer(std::size_t renderer_id)
+    void renderer_frontend::set_current_worker(worker_type type, std::size_t worker_id)
     {
-        _implementation->set_current_renderer(renderer_id);
+        if (type == worker_type::Developer)
+            return _implementation->set_current_developer(worker_id);
+        else
+            return _implementation->set_current_renderer(worker_id);
     }
 
-    std::size_t renderer_frontend::get_current_renderer() const
+    std::size_t renderer_frontend::get_current_worker(worker_type type) const
     {
-        return _implementation->get_current_renderer();
+        if (type == worker_type::Developer)
+            return _implementation->get_current_developer();
+        else
+            return _implementation->get_current_renderer();
     }
 
-    const renderer_frontend::worker_descriptor &renderer_frontend::get_renderer_descriptor(std::size_t renderer_id) const
+    const renderer_frontend::worker_descriptor& renderer_frontend::get_current_worker_descriptor(worker_type type) const
     {
-        return _implementation->get_renderer_descriptor(renderer_id);
+        const auto id = get_current_worker(type);
+        return get_worker_descriptor(type, id);
     }
 
-    std::size_t renderer_frontend::get_developer_count() const
+    const renderer_frontend::worker_descriptor& renderer_frontend::get_worker_descriptor(worker_type type, std::size_t worker_id) const
     {
-        return _implementation->get_developer_count();
+        if (type == worker_type::Developer)
+            return _implementation->get_developer_descriptor(worker_id);
+        else
+            return _implementation->get_renderer_descriptor(worker_id);
     }
-
-    void renderer_frontend::set_current_developer(std::size_t developer_id)
-    {
-        _implementation->set_current_developer(developer_id);
-    }
-
-    std::size_t renderer_frontend::get_current_developer() const
-    {
-        return _implementation->get_current_developer();
-    }
-
-    const renderer_frontend::worker_descriptor &renderer_frontend::get_developer_descriptor(std::size_t developer_id) const
-    {
-        return _implementation->get_developer_descriptor(developer_id);
-    }
-
 }

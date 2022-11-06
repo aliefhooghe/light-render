@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 
 #include "host/renderer_frontend/renderer_frontend.h"
+#include "renderer_gui.h"
 
 namespace Xrender {
 
@@ -19,8 +20,6 @@ namespace Xrender {
         void execute();
 
     private:
-        void _next_renderer();
-        void _next_developer();
         void _next_control_mode();
         void _next_setting();
 
@@ -41,6 +40,7 @@ namespace Xrender {
         SDL_GLContext _gl_context{nullptr};
         GLuint _texture{0u};
         std::unique_ptr<renderer_frontend> _renderer;
+        std::unique_ptr<renderer_gui> _gui;
         bool _fast_mode{false};
 
         // control mode

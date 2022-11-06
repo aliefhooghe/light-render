@@ -58,15 +58,16 @@ namespace Xrender
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glEnable(GL_TEXTURE_2D);
 
-        // Initialize the renderer
-        _renderer = renderer_frontend::build_renderer_frontend(config, _texture);
-
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGui::StyleColorsDark();
+        ImGui::StyleColorsClassic();
         ImGui_ImplSDL2_InitForOpenGL(_window, _gl_context);
         ImGui_ImplOpenGL2_Init();
+
+        // Initialize the renderer and the gui
+        _renderer = renderer_frontend::build_renderer_frontend(config, _texture);
+        _gui = std::make_unique<renderer_gui>(*_renderer);
 
         SDL_ShowWindow(_window);
         _update_size();
@@ -96,30 +97,6 @@ namespace Xrender
             _renderer->develop_image();
             _draw();
         }
-    }
-
-    void renderer_application::_next_renderer()
-    {
-        const auto renderer_count = _renderer->get_renderer_count();
-        const auto current_renderer = _renderer->get_current_renderer();
-        const auto next_renderer = (current_renderer + 1) % renderer_count;
-        const auto& next_renderer_desc = _renderer->get_renderer_descriptor(next_renderer);
-
-        _renderer->set_current_renderer(next_renderer);
-
-        std::cout << "\nSwitch to renderer " << next_renderer_desc.name() << std::endl;
-    }
-
-    void renderer_application::_next_developer()
-    {
-        const auto developer_count = _renderer->get_developer_count();
-        const auto current_developer = _renderer->get_current_developer();
-        const auto next_developer = (current_developer + 1) % developer_count;
-        const auto& next_developer_desc = _renderer->get_developer_descriptor(next_developer);
-
-        _renderer->set_current_developer(next_developer);
-
-        std::cout << "\nSwitch to developer " << next_developer_desc.name() << std::endl;
     }
 
     void renderer_application::_next_control_mode()
@@ -187,10 +164,11 @@ namespace Xrender
 
     const renderer_frontend::worker_descriptor& renderer_application::_get_current_control_worker()
     {
-        return
-            _control_mode == control_mode::DEVELOPER_SETTINGS ?
-                _renderer->get_developer_descriptor(_renderer->get_current_developer()) :
-                _renderer->get_renderer_descriptor(_renderer->get_current_renderer());
+        const renderer_frontend::worker_type worker_type =
+            (_control_mode == control_mode::DEVELOPER_SETTINGS) ?
+                renderer_frontend::worker_type::Developer :
+                renderer_frontend::worker_type::Renderer;
+        return _renderer->get_current_worker_descriptor(worker_type);
     }
 
     void renderer_application::_handle_key_down(SDL_Keysym key)
@@ -209,14 +187,6 @@ namespace Xrender
 
             case SDLK_BACKSPACE:
                 _switch_fast_mode();
-                break;
-
-            case SDLK_RETURN:
-                _next_renderer();
-                break;
-
-            case SDLK_RSHIFT:
-                _next_developer();
                 break;
 
             case SDLK_ESCAPE:
@@ -340,7 +310,7 @@ namespace Xrender
             ImGui_ImplOpenGL2_NewFrame();
             ImGui_ImplSDL2_NewFrame();
             ImGui::NewFrame();
-            ImGui::ShowDemoWindow();
+            _gui->draw();
             ImGui::Render(); // Prepare data for rendering
         }
 
