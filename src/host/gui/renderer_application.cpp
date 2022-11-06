@@ -253,7 +253,7 @@ namespace Xrender
 
             if (_control_setting_id < setting_count)
             {
-                worker_settings[_control_setting_id].scale(up);
+                std::cout << "[WARNING] Control from mouse is disabled for this setting" << std::endl;
             }
         }
     }

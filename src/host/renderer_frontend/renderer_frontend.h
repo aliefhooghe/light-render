@@ -26,16 +26,16 @@ namespace Xrender
     public:
         class setting
         {
-            using set_callback = std::function<void(bool)>;
         public:
-            setting(const std::string& n, set_callback c)
-            : _name{n}, _callback{c}
+            setting(const std::string& n, float& val)
+            : _name{n}, _val{val}
             {}
-            void scale(bool up) const { _callback(up); }
+
+            float& value() const noexcept { return _val; }
             const std::string& name() const { return _name; }
         private:
             const std::string _name;
-            const set_callback _callback;
+            float& _val;
         };
 
         class worker_descriptor

@@ -121,9 +121,7 @@ namespace Xrender
                 {
                     "Average Developer",
                     {
-                        {
-                            "Factor", [average_dev](bool up) { average_dev->scale_factor(up); }
-                        }
+                        { "Factor", average_dev->factor() }
                     }
                 },
                 std::move(average_developer));
@@ -136,12 +134,8 @@ namespace Xrender
                 {
                     "Gamma developer",
                     {
-                        {
-                            "Factor", [gamma_dev](bool up) { gamma_dev->scale_factor(up); }
-                        },
-                        {
-                            "Gamma",  [gamma_dev](bool up) { gamma_dev->scale_gamma(up); }
-                        }
+                        { "Factor", gamma_dev->factor() },
+                        { "Gamma",  gamma_dev->gamma() }
                     }
                 },
                 std::move(gamma_developer));

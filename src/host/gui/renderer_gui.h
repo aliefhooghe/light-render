@@ -12,7 +12,9 @@ namespace Xrender {
 
         void draw();
     private:
+        void _draw_worker_panel(renderer_frontend::worker_type);
         void _draw_worker_selector(renderer_frontend::worker_type);
+
         renderer_frontend& _frontend;
     };
 
