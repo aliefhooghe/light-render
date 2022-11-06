@@ -23,7 +23,9 @@ namespace Xrender
 
     static __device__ bool intersect_ray_face(const float3 points[3], const float3 &pos, const float3 &dir, intersection &inter)
     {
-        const float EPSILON = 0.000001f;
+        constexpr float EPSILON = 0.0000001f;
+        constexpr float OFFSET = 0.00001f;
+
         const auto point0 = points[0];
         const auto point1 = points[1];
         const auto point2 = points[2];
@@ -36,7 +38,7 @@ namespace Xrender
         if (fabs(a) < EPSILON)
             return false; // This ray is parallel to this triangle.
         f = __frcp_rn(a); // = 1/a in nearest mode (even with fast-math)
-        s = pos + EPSILON * dir - point0;
+        s = pos + OFFSET * dir  - point0;
         u = f * dot(s, h);
         if (u < 0.f || u > 1.f)
             return false;
