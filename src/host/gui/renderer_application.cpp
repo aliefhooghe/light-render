@@ -61,7 +61,7 @@ namespace Xrender
         // Setup Dear ImGui context
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
-        ImGui::StyleColorsClassic();
+        ImGui::StyleColorsDark();
         ImGui_ImplSDL2_InitForOpenGL(_window, _gl_context);
         ImGui_ImplOpenGL2_Init();
 
