@@ -99,76 +99,30 @@ namespace Xrender
         }
     }
 
-    void renderer_application::_next_control_mode()
-    {
-        std::cout << "\nSwitch to control mode : ";
-
-        switch (_control_mode)
-        {
-        case control_mode::CAMERA_SETTINGS:
-            std::cout << "Developer" << std::endl;
-            _control_mode = control_mode::DEVELOPER_SETTINGS;
-            break;
-        case control_mode::DEVELOPER_SETTINGS:
-            std::cout << "Renderer" << std::endl;
-            _control_mode = control_mode::RENDERER_SETTINGS;
-            break;
-        case control_mode::RENDERER_SETTINGS:
-            std::cout << "Camera" << std::endl;
-            _control_mode = control_mode::CAMERA_SETTINGS;
-            break;
-        default:
-            break;
-        }
-    }
 
     void renderer_application::_next_setting()
     {
-        if (_control_mode == control_mode::CAMERA_SETTINGS)
+        std::cout << "\nSwitch to camera setting ";
+        switch (_camera_setting)
         {
-            std::cout << "\nSwitch to camera setting ";
-            switch (_camera_setting)
-            {
-            case camera_setting::SENSOR_LENS_DISTANCE:
-                std::cout << "focal length" << std::endl;
-                _camera_setting = camera_setting::FOCAL_LENGTH;
-                break;
+        case camera_setting::SENSOR_LENS_DISTANCE:
+            std::cout << "focal length" << std::endl;
+            _camera_setting = camera_setting::FOCAL_LENGTH;
+            break;
 
-            case camera_setting::FOCAL_LENGTH:
-                std::cout << "diaphragm radius" << std::endl;
-                _camera_setting = camera_setting::DIAPHRAGM_RADIUS;
-                break;
+        case camera_setting::FOCAL_LENGTH:
+            std::cout << "diaphragm radius" << std::endl;
+            _camera_setting = camera_setting::DIAPHRAGM_RADIUS;
+            break;
 
-            case camera_setting::DIAPHRAGM_RADIUS:
-                std::cout << "sensor-lens distance" << std::endl;
-                _camera_setting = camera_setting::SENSOR_LENS_DISTANCE;
-                break;
+        case camera_setting::DIAPHRAGM_RADIUS:
+            std::cout << "sensor-lens distance" << std::endl;
+            _camera_setting = camera_setting::SENSOR_LENS_DISTANCE;
+            break;
 
-            default:
-                break;
-            }
+        default:
+            break;
         }
-        else
-        {
-            const auto& worker = _get_current_control_worker();
-            const auto& worker_settings = worker.settings();
-            const auto setting_count = worker_settings.size();
-
-            if (setting_count > 0) {
-                _control_setting_id = (_control_setting_id + 1) % setting_count;
-                std::cout << "\nSwitched to control setting : " << worker.name()
-                        <<  " - " << worker_settings[_control_setting_id].name() << std::endl;
-            }
-        }
-    }
-
-    const renderer_frontend::worker_descriptor& renderer_application::_get_current_control_worker()
-    {
-        const renderer_frontend::worker_type worker_type =
-            (_control_mode == control_mode::DEVELOPER_SETTINGS) ?
-                renderer_frontend::worker_type::Developer :
-                renderer_frontend::worker_type::Renderer;
-        return _renderer->get_current_worker_descriptor(worker_type);
     }
 
     void renderer_application::_handle_key_down(SDL_Keysym key)
@@ -179,10 +133,6 @@ namespace Xrender
         {
             case SDLK_TAB:
                 _next_setting();
-                break;
-
-            case SDLK_c:
-                _next_control_mode();
                 break;
 
             case SDLK_BACKSPACE:
@@ -225,36 +175,22 @@ namespace Xrender
 
     void renderer_application::_handle_mouse_wheel(bool up)
     {
-        if (_control_mode == control_mode::CAMERA_SETTINGS)
+        switch (_camera_setting)
         {
-            switch (_camera_setting)
-            {
-            case camera_setting::SENSOR_LENS_DISTANCE:
+        case camera_setting::SENSOR_LENS_DISTANCE:
                 _renderer->scale_sensor_lens_distance(up, 1.0001f);
                 break;
 
-            case camera_setting::FOCAL_LENGTH:
+        case camera_setting::FOCAL_LENGTH:
                 _renderer->scale_focal_length(up, 1.01f);
                 break;
 
-            case camera_setting::DIAPHRAGM_RADIUS:
+        case camera_setting::DIAPHRAGM_RADIUS:
                 _renderer->scale_diaphragm_radius(up, 1.1f);
                 break;
 
-            default:
+        default:
                 break;
-            }
-        }
-        else
-        {
-            const auto& worker = _get_current_control_worker();
-            const auto& worker_settings = worker.settings();
-            const auto setting_count = worker_settings.size();
-
-            if (_control_setting_id < setting_count)
-            {
-                std::cout << "[WARNING] Control from mouse is disabled for this setting" << std::endl;
-            }
         }
     }
 

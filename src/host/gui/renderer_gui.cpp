@@ -45,7 +45,7 @@ namespace Xrender {
                 /* speed */ 0.01f,
                 /* min */ 0.f,
                 /* max */ 10.f,
-                "%.3f", 1.f);
+                "%.3f", 2.f);
         }
     }
 
