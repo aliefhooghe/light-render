@@ -33,7 +33,7 @@ namespace Xrender {
 
     renderer_manager::renderer_manager(renderer_manager&& other) noexcept
     :   _renderer{std::move(other._renderer)},
-        _total_sample_count{other._total_sample_count},
+        _status{other._status},
         _camera{other._camera},
         _rand_pool{other._rand_pool},
         _device_sensor{other._device_sensor}
@@ -54,7 +54,7 @@ namespace Xrender {
         const auto width = _camera.get_image_width();
         const auto height = _camera.get_image_height();
         CUDA_CHECK(cudaMemset(_device_sensor, 0u, width * height * sizeof(float3)));
-        _total_sample_count = 0u;
+        _status.total_integrated_sample = 0u;
     }
 
     void renderer_manager::integrate_for(const std::chrono::milliseconds& max_duration)
@@ -62,24 +62,24 @@ namespace Xrender {
         using namespace std::chrono;
 
         // estimate sample count to run
-        const auto sample_count = std::max<std::size_t>(1u, static_cast<std::size_t>(
-            _speed * static_cast<float>(max_duration.count()) / 1000.f));
+        _status.last_sample_count = std::max<std::size_t>(1u, static_cast<std::size_t>(
+            _status.spp_per_second * static_cast<float>(max_duration.count()) / 1000.f));
 
         auto start_time = steady_clock::now();
-        _render_integrate_step(sample_count);
+        _render_integrate_step(_status.last_sample_count);
         auto end_time = steady_clock::now();
         auto duration = end_time - start_time;
 
         // Update sample per step to follow the interval requirement
 
-        const auto recorded_speed = static_cast<float>(sample_count) / static_cast<float>(duration.count());
+        const auto recorded_speed = static_cast<float>(_status.last_sample_count ) / static_cast<float>(duration.count());
         const auto recorded_speed_spp_per_sec = recorded_speed * 1E9f;
 
         std::cout
-            << "\r[ Integrated " << sample_count << " more samples ] - [ "
-            << std::fixed << recorded_speed_spp_per_sec << " spp/sec - total = " << _total_sample_count << " spp ]" << std::flush;
+            << "\r[ Integrated " << _status.last_sample_count  << " more samples ] - [ "
+            << std::fixed << recorded_speed_spp_per_sec << " spp/sec - total = " << _status.total_integrated_sample << " spp ]" << std::flush;
 
-        _speed = recorded_speed_spp_per_sec;
+        _status.spp_per_second = recorded_speed_spp_per_sec;
     }
 
     void renderer_manager::_render_integrate_step(std::size_t sample_count)
@@ -87,6 +87,6 @@ namespace Xrender {
         _renderer->call_integrate_kernel(_camera, _rand_pool, sample_count, _device_sensor);
         CUDA_CHECK(cudaGetLastError());
         CUDA_CHECK(cudaDeviceSynchronize());
-        _total_sample_count += sample_count;
+        _status.total_integrated_sample += sample_count;
     }
 }

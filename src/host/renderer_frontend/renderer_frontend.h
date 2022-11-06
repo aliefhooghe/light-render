@@ -8,6 +8,7 @@
 
 #include "host/bitmap/bitmap.h"
 #include "host/configuration/configuration.h"
+#include "rendering_status.h"
 
 namespace Xrender
 {
@@ -80,6 +81,7 @@ namespace Xrender
         void camera_move_forward(float distance);
         void camera_move_lateral(float distance);
         void camera_rotate(float theta, float phi);
+
         /**
          *
          */
@@ -110,6 +112,8 @@ namespace Xrender
         std::size_t get_current_worker(worker_type type) const;
         const worker_descriptor& get_current_worker_descriptor(worker_type type) const;
         const worker_descriptor& get_worker_descriptor(worker_type type, std::size_t renderer_id) const;
+
+        const rendering_status& get_rendering_status() const noexcept;
 
         renderer_frontend(renderer_frontend_implementation* impl);
     private:

@@ -177,19 +177,19 @@ namespace Xrender
     {
         switch (_camera_setting)
         {
-        case camera_setting::SENSOR_LENS_DISTANCE:
+            case camera_setting::SENSOR_LENS_DISTANCE:
                 _renderer->scale_sensor_lens_distance(up, 1.0001f);
                 break;
 
-        case camera_setting::FOCAL_LENGTH:
+            case camera_setting::FOCAL_LENGTH:
                 _renderer->scale_focal_length(up, 1.01f);
                 break;
 
-        case camera_setting::DIAPHRAGM_RADIUS:
+            case camera_setting::DIAPHRAGM_RADIUS:
                 _renderer->scale_diaphragm_radius(up, 1.1f);
                 break;
 
-        default:
+            default:
                 break;
         }
     }

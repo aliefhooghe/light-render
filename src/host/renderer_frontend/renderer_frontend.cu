@@ -47,6 +47,8 @@ namespace Xrender
         void integrate_for(const std::chrono::milliseconds &max_duration);
         void develop_image();
         std::vector<rgb24> get_image();
+
+        // todo: use worker_type ?
         std::size_t get_renderer_count() const;
         void set_current_renderer(std::size_t renderer_id);
         std::size_t get_current_renderer() const;
@@ -56,6 +58,8 @@ namespace Xrender
         void set_current_developer(std::size_t developer_id);
         std::size_t get_current_developer() const;
         const worker_descriptor &get_developer_descriptor(std::size_t developer_id) const;
+
+        const rendering_status& get_rendering_status() const noexcept;
 
         unsigned int get_image_width() const noexcept { return _camera.get_image_width(); }
         unsigned int get_image_height() const noexcept { return _camera.get_image_height(); }
@@ -245,7 +249,7 @@ namespace Xrender
         auto &renderer = _renderers[_current_renderer];
 
         _developpers[_current_developer]->call_develop_to_texture_kernel(
-            renderer.get_total_sample_count(),
+            renderer.get_status().total_integrated_sample,
             _camera.get_image_width(),
             _camera.get_image_height(),
             renderer.get_device_sensor(),
@@ -330,6 +334,14 @@ namespace Xrender
             return _developpers_settings[developer_id];
         else
             throw std::invalid_argument("invalid renderer id");
+    }
+
+    const rendering_status& renderer_frontend_implementation::get_rendering_status() const noexcept
+    {
+        if (_current_renderer >= get_renderer_count())
+            throw std::runtime_error("No renderer to get status");
+        else
+            return _renderers[_current_renderer].get_status();
     }
 
     /**
@@ -487,5 +499,10 @@ namespace Xrender
             return _implementation->get_developer_descriptor(worker_id);
         else
             return _implementation->get_renderer_descriptor(worker_id);
+    }
+
+    const rendering_status& renderer_frontend::get_rendering_status() const noexcept
+    {
+        return _implementation->get_rendering_status();
     }
 }

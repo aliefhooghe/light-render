@@ -19,16 +19,26 @@ namespace Xrender {
             _draw_worker_panel(renderer_frontend::worker_type::Developer);
             ImGui::TreePop();
         }
+
         if (ImGui::TreeNode("Render Settings"))
         {
             _draw_worker_panel(renderer_frontend::worker_type::Renderer);
             ImGui::TreePop();
         }
-        if (ImGui::TreeNode("Widget Demo"))
+
+        if (ImGui::TreeNode("Status"))
         {
-            ImGui::ShowDemoWindow();
+            const auto& status = _frontend.get_rendering_status();
+            ImGui::Text("Speed     : %.1f spp/sec", status.spp_per_second);
+            ImGui::Text("Integrated: %llu samples", status.total_integrated_sample);
             ImGui::TreePop();
         }
+
+        // if (ImGui::TreeNode("Widget Demo"))
+        // {
+        //     ImGui::ShowDemoWindow();
+        //     ImGui::TreePop();
+        // }
 
         ImGui::End();
     }
