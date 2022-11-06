@@ -81,3 +81,42 @@ target_link_libraries(xrender PUBLIC
     GLEW::GLEW
     nlohmann_json::nlohmann_json
     nlohmann_json)
+
+target_compile_options(xrender PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>)
+
+set_property(TARGET xrender PROPERTY CUDA_ARCHITECTURES native)
+
+
+
+#  Cuda documentation on fast-math; (mitigated where needed)
+#
+#
+# --use_fast_math                                 (-use_fast_math)
+#         Make use of fast math library.  '--use_fast_math' implies '--ftz=true --prec-div=false
+#         --prec-sqrt=false --fmad=true'.
+#
+# --ftz {true|false}                              (-ftz)
+#         This option controls single-precision denormals support. '--ftz=true' flushes
+#         denormal values to zero and '--ftz=false' preserves denormal values. '--use_fast_math'
+#         implies '--ftz=true'.
+#         Default value:  false.
+# warning: ftz is a fpu thread level setting: this can affect other code
+#
+# --prec-div {true|false}                         (-prec-div)
+#         This option controls single-precision floating-point division and reciprocals.
+#         '--prec-div=true' enables the IEEE round-to-nearest mode and '--prec-div=false'
+#         enables the fast approximation mode.  '--use_fast_math' implies '--prec-div=false'.
+#         Default value:  true.
+#
+# --prec-sqrt {true|false}                        (-prec-sqrt)
+#         This option controls single-precision floating-point squre root.  '--prec-sqrt=true'
+#         enables the IEEE round-to-nearest mode and '--prec-sqrt=false' enables the
+#         fast approximation mode.  '--use_fast_math' implies '--prec-sqrt=false'.
+#         Default value:  true.
+#
+# --fmad {true|false}                             (-fmad)
+#         This option enables (disables) the contraction of floating-point multiplies
+#         and adds/subtracts into floating-point multiply-add operations (FMAD, FFMA,
+#         or DFMA).  '--use_fast_math' implies '--fmad=true'.
+#         Default value:  true.
