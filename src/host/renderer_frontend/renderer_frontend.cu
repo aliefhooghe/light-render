@@ -28,6 +28,7 @@ namespace Xrender
     public:
         using setting = renderer_frontend::setting;
         using worker_descriptor = renderer_frontend::worker_descriptor;
+        using lens_setting = renderer_frontend::lens_setting;
 
         renderer_frontend_implementation(
             camera cam,
@@ -36,9 +37,11 @@ namespace Xrender
             GLuint texture_id);
         ~renderer_frontend_implementation() noexcept;
 
-        void scale_sensor_lens_distance(bool up, float factor);
-        void scale_focal_length(bool up, float factor);
-        void scale_diaphragm_radius(bool up, float factor);
+        // Lens parametrization
+        void set_camera_lens_setting(lens_setting, float value);
+        float get_camera_lens_setting(lens_setting) const noexcept;
+
+        // Camera movements
         void camera_move(float dx, float dy, float dz);
         void camera_move_forward(float distance);
         void camera_move_lateral(float distance);
@@ -183,28 +186,33 @@ namespace Xrender
             return;
         _renderers[_current_renderer].reset();
     }
-    void renderer_frontend_implementation::scale_sensor_lens_distance(bool up, float factor)
+
+    void renderer_frontend_implementation::set_camera_lens_setting(lens_setting type, float value)
     {
-        if (up)
-            _camera._sensor_lens_distance *= factor;
-        else
-            _camera._sensor_lens_distance /= factor;
+        switch (type)
+        {
+        case lens_setting::SENSOR_LENS_DISTANCE:
+            _camera._sensor_lens_distance = value;
+            break;
+        case lens_setting::FOCAL_LENGTH:
+            camera_update_focal_length(_camera, value);
+            break;
+        case lens_setting::DIAPHRAGM_RADIUS:
+            _camera._diaphragm_radius = value;
+            break;
+        }
         _reset_current_renderer();
     }
 
-    void renderer_frontend_implementation::scale_focal_length(bool up, float factor)
+    float renderer_frontend_implementation::get_camera_lens_setting(lens_setting type) const noexcept
     {
-        camera_update_focal_length(_camera, up, factor);
-        _reset_current_renderer();
-    }
-
-    void renderer_frontend_implementation::scale_diaphragm_radius(bool up, float factor)
-    {
-        if (up)
-            _camera._diaphragm_radius *= factor;
-        else
-            _camera._diaphragm_radius /= factor;
-        _reset_current_renderer();
+        switch (type)
+        {
+        case lens_setting::SENSOR_LENS_DISTANCE: return _camera._sensor_lens_distance;
+        case lens_setting::FOCAL_LENGTH: return _camera._focal_length;
+        default:
+        case lens_setting::DIAPHRAGM_RADIUS: return _camera._diaphragm_radius;
+        }
     }
 
     void renderer_frontend_implementation::camera_move(float dx, float dy, float dz)
@@ -401,19 +409,14 @@ namespace Xrender
             delete _implementation;
     }
 
-    void renderer_frontend::scale_sensor_lens_distance(bool up, float factor)
+    void renderer_frontend::set_camera_lens_setting(lens_setting type, float value)
     {
-        _implementation->scale_sensor_lens_distance(up, factor);
+        _implementation->set_camera_lens_setting(type, value);
     }
 
-    void renderer_frontend::scale_focal_length(bool up, float factor)
+    float renderer_frontend::get_camera_lens_setting(lens_setting type) const noexcept
     {
-        _implementation->scale_focal_length(up, factor);
-    }
-
-    void renderer_frontend::scale_diaphragm_radius(bool up, float factor)
-    {
-        _implementation->scale_diaphragm_radius(up, factor);
+        return _implementation->get_camera_lens_setting(type);
     }
 
     void renderer_frontend::camera_move(float dx, float dy, float dz)

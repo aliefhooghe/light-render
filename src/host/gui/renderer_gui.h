@@ -16,6 +16,8 @@ namespace Xrender {
     private:
         void _draw_worker_panel(renderer_frontend::worker_type);
         void _draw_worker_selector(renderer_frontend::worker_type);
+        void _draw_camera_setting(renderer_frontend::lens_setting, float speed, float power, float vmin, float vmax, const char* label);
+        void _draw_camera_panel();
         void _draw_status_panel();
 
         renderer_frontend& _frontend;

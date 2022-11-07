@@ -26,7 +26,7 @@ namespace Xrender {
 
         if (ImGui::CollapsingHeader("Camera Settings"))
         {
-            ImGui::Text("to do....");
+            _draw_camera_panel();
         }
 
         if (ImGui::CollapsingHeader("Status"))
@@ -34,10 +34,10 @@ namespace Xrender {
             _draw_status_panel();
         }
 
-        // if (ImGui::CollapsingHeader("Widget Demo"))
-        // {
-        //     ImGui::ShowDemoWindow();
-        // }
+        if (ImGui::CollapsingHeader("Widget Demo"))
+        {
+            ImGui::ShowDemoWindow();
+        }
 
         ImGui::End();
     }
@@ -74,6 +74,26 @@ namespace Xrender {
             }
             ImGui::EndCombo();
         }
+    }
+
+    void renderer_gui::_draw_camera_setting(renderer_frontend::lens_setting setting, float speed, float power, float vmin, float vmax, const char* label)
+    {
+        float value = _frontend.get_camera_lens_setting(setting);
+        if (ImGui::DragFloat(label, &value,
+            /* speed */ speed,
+            /* min */ vmin,
+            /* max */ vmax,
+            "%.3f", power))
+        {
+            _frontend.set_camera_lens_setting(setting, value);
+        }
+    }
+
+    void renderer_gui::_draw_camera_panel()
+    {
+        _draw_camera_setting(renderer_frontend::lens_setting::FOCAL_LENGTH, 0.001f, 4.f, 0.001f, 0.4f, "focal length");
+        _draw_camera_setting(renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE, 0.001f, 10.f, 0.001f, 0.4f, "sensor lens dist");
+        _draw_camera_setting(renderer_frontend::lens_setting::DIAPHRAGM_RADIUS, 0.01f, 4.f, 0.f, 2.0f, "diaph radius");
     }
 
     void renderer_gui::_draw_status_panel()

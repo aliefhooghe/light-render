@@ -45,15 +45,8 @@ namespace Xrender {
             CAMERA
         };
 
-        enum class camera_setting
-        {
-            SENSOR_LENS_DISTANCE,
-            FOCAL_LENGTH,
-            DIAPHRAGM_RADIUS
-        };
-
         mouse_mode _mouse_mode{mouse_mode::GUI};
-        camera_setting _camera_mouse_wheel_setting{camera_setting::FOCAL_LENGTH};
+        renderer_frontend::lens_setting _camera_mouse_wheel_setting{renderer_frontend::lens_setting::FOCAL_LENGTH};
         float _camera_theta{0.f};
         float _camera_phi{0.f};
     };

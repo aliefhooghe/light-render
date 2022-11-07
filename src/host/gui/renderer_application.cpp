@@ -105,19 +105,19 @@ namespace Xrender
         std::cout << "\nSwitch to camera setting ";
         switch (_camera_mouse_wheel_setting)
         {
-        case camera_setting::SENSOR_LENS_DISTANCE:
+        case renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE:
             std::cout << "focal length" << std::endl;
-            _camera_mouse_wheel_setting = camera_setting::FOCAL_LENGTH;
+            _camera_mouse_wheel_setting = renderer_frontend::lens_setting::FOCAL_LENGTH;
             break;
 
-        case camera_setting::FOCAL_LENGTH:
+        case renderer_frontend::lens_setting::FOCAL_LENGTH:
             std::cout << "diaphragm radius" << std::endl;
-            _camera_mouse_wheel_setting = camera_setting::DIAPHRAGM_RADIUS;
+            _camera_mouse_wheel_setting = renderer_frontend::lens_setting::DIAPHRAGM_RADIUS;
             break;
 
-        case camera_setting::DIAPHRAGM_RADIUS:
+        case renderer_frontend::lens_setting::DIAPHRAGM_RADIUS:
             std::cout << "sensor-lens distance" << std::endl;
-            _camera_mouse_wheel_setting = camera_setting::SENSOR_LENS_DISTANCE;
+            _camera_mouse_wheel_setting = renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE;
             break;
 
         default:
@@ -175,23 +175,26 @@ namespace Xrender
 
     void renderer_application::_handle_camera_mouse_wheel(bool up)
     {
+        float factor;
         switch (_camera_mouse_wheel_setting)
         {
-            case camera_setting::SENSOR_LENS_DISTANCE:
-                _renderer->scale_sensor_lens_distance(up, 1.0001f);
-                break;
-
-            case camera_setting::FOCAL_LENGTH:
-                _renderer->scale_focal_length(up, 1.01f);
-                break;
-
-            case camera_setting::DIAPHRAGM_RADIUS:
-                _renderer->scale_diaphragm_radius(up, 1.1f);
-                break;
-
             default:
+            case renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE:
+                factor = 1.0001f;
+                break;
+
+            case renderer_frontend::lens_setting::FOCAL_LENGTH:
+                factor = 1.01f;
+                break;
+
+            case renderer_frontend::lens_setting::DIAPHRAGM_RADIUS:
+                factor = 1.1f;
                 break;
         }
+
+        const float current_value = _renderer->get_camera_lens_setting(_camera_mouse_wheel_setting);
+        const float new_value = current_value * (up ? factor : (1.f/factor));
+        _renderer->set_camera_lens_setting(_camera_mouse_wheel_setting, new_value);
     }
 
     void renderer_application::_handle_camera_mouse_motion(int xrel, int yrel)
