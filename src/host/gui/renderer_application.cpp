@@ -1,4 +1,3 @@
-
 #include <stdexcept>
 #include <iostream>
 #include <cmath>
@@ -90,13 +89,10 @@ namespace Xrender
         std::cout << "Start rendering" << std::endl;
         while (!_handle_events())
         {
-            const auto integration_duration =
-                std::chrono::milliseconds(_fast_mode ? 10000 : 64 /* 15 fps */);
-            _renderer->update(integration_duration);
+            _renderer->update();
             _draw();
         }
     }
-
 
     void renderer_application::_next_camera_setting()
     {
@@ -131,10 +127,6 @@ namespace Xrender
         {
             case SDLK_TAB:
                 _next_camera_setting();
-                break;
-
-            case SDLK_BACKSPACE:
-                _switch_fast_mode();
                 break;
 
             case SDLK_ESCAPE:
@@ -279,21 +271,9 @@ namespace Xrender
         glOrtho(0.f, 1.f, 0.f, 1.f, -1.f, 1.f);
     }
 
-    void renderer_application::_switch_fast_mode()
-    {
-        _fast_mode = !_fast_mode;
-        if (_fast_mode && _mouse_mode == mouse_mode::CAMERA)
-        {
-            // Disable camera mouse mode during fast mode
-            _switch_mouse_mode();
-        }
-        std::cout << "\n" <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
-    }
-
     void renderer_application::_switch_mouse_mode()
     {
         _mouse_mode = (_mouse_mode == mouse_mode::CAMERA) ? mouse_mode::GUI : mouse_mode::CAMERA;
-        std::cout << "mouse mode become" << ((_mouse_mode == mouse_mode::CAMERA) ? "camera" : "gui") << std::endl;
         SDL_SetWindowGrab(_window, static_cast<SDL_bool>(_mouse_mode == mouse_mode::CAMERA));
         SDL_SetRelativeMouseMode(static_cast<SDL_bool>(_mouse_mode == mouse_mode::CAMERA));
     }

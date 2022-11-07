@@ -34,11 +34,6 @@ namespace Xrender {
             _draw_status_panel();
         }
 
-        if (ImGui::CollapsingHeader("Widget Demo"))
-        {
-            ImGui::ShowDemoWindow();
-        }
-
         ImGui::End();
     }
 
@@ -100,6 +95,12 @@ namespace Xrender {
     {
         const auto& color = ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram];
         const auto& status = _frontend.get_rendering_status();
+
+        if (ImGui::SliderFloat("rendering fps", &_rendering_fps, 0.1, 60, "%.1f", 2.f))
+        {
+            _frontend.set_integration_duration(
+                std::chrono::milliseconds{static_cast<int64_t>(1000.f / _rendering_fps)});
+        }
 
         ImGui::TextColored(color, "frame : %llu samples", status.frame_sample_count);
         ImGui::TextColored(color, "total : %llu samples", status.total_integrated_sample);

@@ -96,7 +96,8 @@ namespace Xrender
         /**
          *
          */
-        void update(const std::chrono::milliseconds &max_integration_duration);
+        void set_integration_duration(const std::chrono::milliseconds &integration_duration);
+        void update();
 
         /**
          * \brief Retrieve the current texture in rgb24 format

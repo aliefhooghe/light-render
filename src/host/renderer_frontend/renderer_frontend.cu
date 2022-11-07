@@ -47,7 +47,8 @@ namespace Xrender
         void camera_move_lateral(float distance);
         void camera_rotate(float theta, float phi);
 
-        void update(const std::chrono::milliseconds &max_integration_duration);
+        void set_integration_duration(const std::chrono::milliseconds &integration_duration);
+        void update();
         std::vector<rgb24> get_image();
 
         // todo: use worker_type ?
@@ -97,6 +98,7 @@ namespace Xrender
 
         // OpenGL texture registered for display
         std::unique_ptr<registered_texture> _registered_texture;
+        std::chrono::milliseconds _integration_duration{std::chrono::milliseconds{50}};
     };
 
     /**
@@ -257,7 +259,12 @@ namespace Xrender
         _reset_current_renderer();
     }
 
-    void renderer_frontend_implementation::update(const std::chrono::milliseconds &max_integration_duration)
+    void renderer_frontend_implementation::set_integration_duration(const std::chrono::milliseconds &integration_duration)
+    {
+        _integration_duration = integration_duration;
+    }
+
+    void renderer_frontend_implementation::update()
     {
         if (_current_renderer >= get_renderer_count() ||
             _current_developer >= get_developer_count())
@@ -271,7 +278,7 @@ namespace Xrender
             _develop_image(renderer.get_device_sensor(), renderer.get_status().total_integrated_sample);
 
             // restart computations
-            renderer.start_integrate_for(max_integration_duration);
+            renderer.start_integrate_for(_integration_duration);
         }
         // else: computation in progress...
     }
@@ -448,9 +455,14 @@ namespace Xrender
         _implementation->camera_rotate(theta, phi);
     }
 
-    void renderer_frontend::update(const std::chrono::milliseconds &max_integration_duration)
+    void renderer_frontend::set_integration_duration(const std::chrono::milliseconds &integration_duration)
     {
-        _implementation->update(max_integration_duration);
+        _implementation->set_integration_duration(integration_duration);
+    }
+
+    void renderer_frontend::update()
+    {
+        _implementation->update();
     }
 
     std::vector<rgb24> renderer_frontend::get_image()

@@ -28,7 +28,6 @@ namespace Xrender {
         void _draw();
         void _update_size();
 
-        void _switch_fast_mode();
         void _switch_mouse_mode();
         void _save_current_image();
 
@@ -37,7 +36,6 @@ namespace Xrender {
         GLuint _texture{0u};
         std::unique_ptr<renderer_frontend> _renderer;
         std::unique_ptr<renderer_gui> _gui;
-        bool _fast_mode{false};
 
         enum class mouse_mode
         {
