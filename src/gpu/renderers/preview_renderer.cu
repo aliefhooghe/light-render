@@ -81,7 +81,7 @@ namespace Xrender
         const auto grid_dim = image_grid_dim(
             cam.get_image_width(), cam.get_image_height(), thread_per_block);
 
-        preview_integrate_kernel<<<grid_dim, thread_per_block>>>(
+        preview_integrate_kernel<<<grid_dim, thread_per_block, 0>>>(
             _device_tree, _tree_size, _device_model, _device_mtl_bank, cam, rand_pool, sample_count, sensor);
     }
 }

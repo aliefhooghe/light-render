@@ -47,8 +47,7 @@ namespace Xrender
         void camera_move_lateral(float distance);
         void camera_rotate(float theta, float phi);
 
-        void integrate_for(const std::chrono::milliseconds &max_duration);
-        void develop_image();
+        void update(const std::chrono::milliseconds &max_integration_duration);
         std::vector<rgb24> get_image();
 
         // todo: use worker_type ?
@@ -75,6 +74,7 @@ namespace Xrender
             worker_descriptor&& descriptor,
             std::unique_ptr<abstract_image_developer> &&developer);
         void _reset_current_renderer();
+        void _develop_image(const float3 *device_sensor, size_t total_integrated_sample);
 
         // Sent at each kernel call
         camera _camera;
@@ -187,6 +187,24 @@ namespace Xrender
         _renderers[_current_renderer].reset();
     }
 
+    void renderer_frontend_implementation::_develop_image(const float3 *device_sensor, size_t total_integrated_sample)
+    {
+        if (_registered_texture == nullptr ||
+            _current_developer >= get_developer_count())
+            return;
+
+        auto mapped_surface = _registered_texture->get_mapped_surface();
+        _developpers[_current_developer]->call_develop_to_texture_kernel(
+            total_integrated_sample,
+            _camera.get_image_width(),
+            _camera.get_image_height(),
+            device_sensor,
+            mapped_surface.surface());
+
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
+    }
+
     void renderer_frontend_implementation::set_camera_lens_setting(lens_setting type, float value)
     {
         switch (type)
@@ -239,32 +257,23 @@ namespace Xrender
         _reset_current_renderer();
     }
 
-    void renderer_frontend_implementation::integrate_for(const std::chrono::milliseconds &max_duration)
+    void renderer_frontend_implementation::update(const std::chrono::milliseconds &max_integration_duration)
     {
-        if (_current_renderer >= get_renderer_count())
-            return;
-        _renderers[_current_renderer].integrate_for(max_duration);
-    }
-
-    void renderer_frontend_implementation::develop_image()
-    {
-        if (_registered_texture == nullptr ||
-            _current_developer >= get_developer_count() ||
-            _current_renderer >= get_renderer_count())
+        if (_current_renderer >= get_renderer_count() ||
+            _current_developer >= get_developer_count())
             return;
 
-        auto mapped_surface = _registered_texture->get_mapped_surface();
-        auto &renderer = _renderers[_current_renderer];
+        auto& renderer = _renderers[_current_renderer];
+        auto& developer = _developpers[_current_developer];
+        if (renderer.is_ready())
+        {
+            // develop synchronously into texture while the computation are running
+            _develop_image(renderer.get_device_sensor(), renderer.get_status().total_integrated_sample);
 
-        _developpers[_current_developer]->call_develop_to_texture_kernel(
-            renderer.get_status().total_integrated_sample,
-            _camera.get_image_width(),
-            _camera.get_image_height(),
-            renderer.get_device_sensor(),
-            mapped_surface.surface());
-
-        CUDA_CHECK(cudaGetLastError());
-        CUDA_CHECK(cudaDeviceSynchronize());
+            // restart computations
+            renderer.start_integrate_for(max_integration_duration);
+        }
+        // else: computation in progress...
     }
 
     std::vector<rgb24> renderer_frontend_implementation::get_image()
@@ -439,14 +448,9 @@ namespace Xrender
         _implementation->camera_rotate(theta, phi);
     }
 
-    void renderer_frontend::integrate_for(const std::chrono::milliseconds &max_duration)
+    void renderer_frontend::update(const std::chrono::milliseconds &max_integration_duration)
     {
-        _implementation->integrate_for(max_duration);
-    }
-
-    void renderer_frontend::develop_image()
-    {
-        _implementation->develop_image();
+        _implementation->update(max_integration_duration);
     }
 
     std::vector<rgb24> renderer_frontend::get_image()

@@ -96,12 +96,7 @@ namespace Xrender
         /**
          *
          */
-        void integrate_for(const std::chrono::milliseconds& max_duration);
-
-        /**
-         * \brief Develop the current renderer sensor to the texture.
-         */
-        void develop_image();
+        void update(const std::chrono::milliseconds &max_integration_duration);
 
         /**
          * \brief Retrieve the current texture in rgb24 format

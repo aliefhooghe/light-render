@@ -101,14 +101,19 @@ namespace Xrender {
         const auto& color = ImGui::GetStyle().Colors[ImGuiCol_PlotHistogram];
         const auto& status = _frontend.get_rendering_status();
 
-        ImGui::TextColored(color, "last frame : %llu samples", status.last_sample_count);
-        ImGui::TextColored(color, "total      : %llu samples", status.total_integrated_sample);
-        ImGui::TextColored(color, "speed      : %.1f spp/sec", status.spp_per_second);
+        ImGui::TextColored(color, "frame : %llu samples", status.frame_sample_count);
+        ImGui::TextColored(color, "total : %llu samples", status.total_integrated_sample);
+        ImGui::TextColored(color, "speed : %.1f spp/sec", status.spp_per_second);
         ImGui::Separator();
 
         // Print a graph of speeds
-        _speed_values[_speed_offset] = status.spp_per_second;
-        _speed_offset = (_speed_offset + 1) % speed_buffer_size;
+        if (_last_speed != status.spp_per_second)
+        {
+            _last_speed = status.spp_per_second;
+            _speed_values[_speed_offset] = status.spp_per_second;
+            _speed_offset = (_speed_offset + 1) % speed_buffer_size;
+        }
+
         ImGui::PlotHistogram(
             "rendering speed", _speed_values.data(), speed_buffer_size, _speed_offset,
             "spp/sec", 0, FLT_MAX, ImVec2(0, 96.f));

@@ -90,11 +90,9 @@ namespace Xrender
         std::cout << "Start rendering" << std::endl;
         while (!_handle_events())
         {
-            const auto render_duration =
+            const auto integration_duration =
                 std::chrono::milliseconds(_fast_mode ? 10000 : 64 /* 15 fps */);
-
-            _renderer->integrate_for(render_duration);
-            _renderer->develop_image();
+            _renderer->update(integration_duration);
             _draw();
         }
     }

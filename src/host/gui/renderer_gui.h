@@ -23,6 +23,7 @@ namespace Xrender {
         renderer_frontend& _frontend;
         std::array<float, speed_buffer_size> _speed_values{};
         std::size_t _speed_offset{0};
+        float _last_speed{0.f};
     };
 
 }
