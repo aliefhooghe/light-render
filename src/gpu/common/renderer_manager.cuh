@@ -9,6 +9,7 @@
 #include "abstract_image_developer.cuh"
 #include "gpu/model/camera.cuh"
 #include "gpu/common/gpu_texture.cuh"
+#include "host/renderer_frontend/rendering_status.h"
 
 namespace Xrender {
 
@@ -22,19 +23,25 @@ namespace Xrender {
         ~renderer_manager() noexcept;
 
         void reset();
-        void integrate_for(const std::chrono::milliseconds& max_duration);
 
-        std::size_t get_total_sample_count() const noexcept { return _total_sample_count; }
+        void start_integrate_for(const std::chrono::milliseconds& max_duration);
+        bool is_ready();
+
+        const rendering_status& get_status() const noexcept { return _status; }
+
         const float3 *get_device_sensor() const noexcept { return _device_sensor; }
 
     private:
-        void _render_integrate_step(std::size_t sample_count);
-
         std::unique_ptr<abstract_renderer> _renderer{nullptr};
 
-        float _speed{1.f}; // spp/sec
-        std::size_t _total_sample_count{0u};
+        rendering_status _status{};
         const camera& _camera;
+
+        // Async working resources
+        bool _ready{true};
+        bool _dirty{false};
+        cudaEvent_t _compute_start_event{nullptr};
+        cudaEvent_t _compute_end_event{nullptr};
 
         // gpu resources
         curandState *_rand_pool{nullptr};

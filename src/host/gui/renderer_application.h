@@ -6,6 +6,7 @@
 #include <SDL2/SDL.h>
 
 #include "host/renderer_frontend/renderer_frontend.h"
+#include "renderer_gui.h"
 
 namespace Xrender {
 
@@ -19,49 +20,31 @@ namespace Xrender {
         void execute();
 
     private:
-        void _next_renderer();
-        void _next_developer();
-        void _next_control_mode();
-        void _next_setting();
-
-        const renderer_frontend::worker_descriptor& _get_current_control_worker();
-
+        void _next_camera_setting();
+        void _handle_camera_mouse_wheel(bool up);
+        void _handle_camera_mouse_motion(int xrel, int yrel);
         void _handle_key_down(SDL_Keysym key);
-        void _handle_mouse_wheel(bool up);
-        void _handle_mouse_motion(int xrel, int yrel);
         bool _handle_events();
         void _draw();
         void _update_size();
 
-        void _switch_fast_mode();
-        void _switch_rotation();
+        void _switch_mouse_mode();
         void _save_current_image();
 
         SDL_Window *_window{nullptr};
         SDL_GLContext _gl_context{nullptr};
         GLuint _texture{0u};
         std::unique_ptr<renderer_frontend> _renderer;
-        bool _fast_mode{false};
+        std::unique_ptr<renderer_gui> _gui;
 
-        // control mode
-        enum class control_mode {
-            CAMERA_SETTINGS,
-            DEVELOPER_SETTINGS,
-            RENDERER_SETTINGS
-        };
-
-        enum class camera_setting
+        enum class mouse_mode
         {
-            SENSOR_LENS_DISTANCE,
-            FOCAL_LENGTH,
-            DIAPHRAGM_RADIUS
+            GUI,
+            CAMERA
         };
 
-        control_mode _control_mode{control_mode::CAMERA_SETTINGS};
-        camera_setting _camera_setting{camera_setting::SENSOR_LENS_DISTANCE};
-        std::size_t _control_setting_id{0u};
-        bool _freeze_camera_rotation{true};
-
+        mouse_mode _mouse_mode{mouse_mode::GUI};
+        renderer_frontend::lens_setting _camera_mouse_wheel_setting{renderer_frontend::lens_setting::FOCAL_LENGTH};
         float _camera_theta{0.f};
         float _camera_phi{0.f};
     };

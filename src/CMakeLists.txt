@@ -10,8 +10,24 @@ find_package(SDL2 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+# Setup ImGui
+set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../3rdParty/imgui)
+set(IMGUI_INCLUDE_DIRECTORIES ${IMGUI_DIR} ${IMGUI_DIR}/backends)
+set(IMGUI_SRC
+    ${IMGUI_DIR}/imgui.cpp
+    ${IMGUI_DIR}/imgui_draw.cpp
+    ${IMGUI_DIR}/imgui_tables.cpp
+    ${IMGUI_DIR}/imgui_widgets.cpp
 
+    # ImGui Backend
+    ${IMGUI_DIR}/backends/imgui_impl_sdl.cpp
+    ${IMGUI_DIR}/backends/imgui_impl_opengl2.cpp
+
+    # Demo windows (testing purpose)
+    ${IMGUI_DIR}/imgui_demo.cpp
+)
+
+# Declare the renderer target
 add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/abstract_renderer.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/common/gpu_texture.cu
@@ -67,11 +83,15 @@ add_executable(xrender
     ${CMAKE_CURRENT_SOURCE_DIR}/host/model_loader/wavefront_obj.cuh
     ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_application.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_gui.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/gui/renderer_gui.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/renderer_frontend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/renderer_frontend.cu
+    ${CMAKE_CURRENT_SOURCE_DIR}/host/renderer_frontend/rendering_status.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.h
     ${CMAKE_CURRENT_SOURCE_DIR}/host/utils/chronometer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/main.cpp
+    ${IMGUI_SRC}
 )
 
 target_link_libraries(xrender PUBLIC
@@ -82,12 +102,12 @@ target_link_libraries(xrender PUBLIC
     nlohmann_json::nlohmann_json
     nlohmann_json)
 
+target_include_directories(xrender PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${IMGUI_INCLUDE_DIRECTORIES})
+
 target_compile_options(xrender PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math>)
 
 set_property(TARGET xrender PROPERTY CUDA_ARCHITECTURES native)
-
-
 
 #  Cuda documentation on fast-math; (mitigated where needed)
 #

@@ -8,6 +8,7 @@
 
 #include "host/bitmap/bitmap.h"
 #include "host/configuration/configuration.h"
+#include "rendering_status.h"
 
 namespace Xrender
 {
@@ -26,16 +27,16 @@ namespace Xrender
     public:
         class setting
         {
-            using set_callback = std::function<void(bool)>;
         public:
-            setting(const std::string& n, set_callback c)
-            : _name{n}, _callback{c}
+            setting(const std::string& n, float& val)
+            : _name{n}, _val{val}
             {}
-            void scale(bool up) const { _callback(up); }
+
+            float& value() const noexcept { return _val; }
             const std::string& name() const { return _name; }
         private:
             const std::string _name;
-            const set_callback _callback;
+            float& _val;
         };
 
         class worker_descriptor
@@ -49,6 +50,19 @@ namespace Xrender
         private:
             const std::string _name;
             const std::vector<setting> _settings;
+        };
+
+        enum class worker_type
+        {
+            Developer,
+            Renderer
+        };
+
+        enum class lens_setting
+        {
+            SENSOR_LENS_DISTANCE,
+            FOCAL_LENGTH,
+            DIAPHRAGM_RADIUS
         };
 
         renderer_frontend(renderer_frontend&) = delete;
@@ -67,22 +81,23 @@ namespace Xrender
         /**
          *      Camera api
          */
-        void scale_sensor_lens_distance(bool up, float factor);
-        void scale_focal_length(bool up, float factor);
-        void scale_diaphragm_radius(bool up, float factor);
+
+        // lens settings
+        void set_camera_lens_setting(lens_setting, float value);
+        float get_camera_lens_setting(lens_setting) const noexcept;
+
+
+        // camera movements
         void camera_move(float dx, float dy, float dz);
         void camera_move_forward(float distance);
         void camera_move_lateral(float distance);
         void camera_rotate(float theta, float phi);
+
         /**
          *
          */
-        void integrate_for(const std::chrono::milliseconds& max_duration);
-
-        /**
-         * \brief Develop the current renderer sensor to the texture.
-         */
-        void develop_image();
+        void set_integration_duration(const std::chrono::milliseconds &integration_duration);
+        void update();
 
         /**
          * \brief Retrieve the current texture in rgb24 format
@@ -99,15 +114,13 @@ namespace Xrender
         /**
          *
          */
-        std::size_t get_renderer_count() const;
-        void set_current_renderer(std::size_t renderer_id);
-        std::size_t get_current_renderer() const;
-        const worker_descriptor& get_renderer_descriptor(std::size_t renderer_id) const;
+        std::size_t get_worker_count(worker_type type) const;
+        void set_current_worker(worker_type type, std::size_t worker_id);
+        std::size_t get_current_worker(worker_type type) const;
+        const worker_descriptor& get_current_worker_descriptor(worker_type type) const;
+        const worker_descriptor& get_worker_descriptor(worker_type type, std::size_t renderer_id) const;
 
-        std::size_t get_developer_count() const;
-        void set_current_developer(std::size_t developer_id);
-        std::size_t get_current_developer() const;
-        const worker_descriptor& get_developer_descriptor(std::size_t developer_id) const;
+        const rendering_status& get_rendering_status() const noexcept;
 
         renderer_frontend(renderer_frontend_implementation* impl);
     private:

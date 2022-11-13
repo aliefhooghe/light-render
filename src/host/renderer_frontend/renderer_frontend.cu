@@ -28,6 +28,7 @@ namespace Xrender
     public:
         using setting = renderer_frontend::setting;
         using worker_descriptor = renderer_frontend::worker_descriptor;
+        using lens_setting = renderer_frontend::lens_setting;
 
         renderer_frontend_implementation(
             camera cam,
@@ -36,17 +37,21 @@ namespace Xrender
             GLuint texture_id);
         ~renderer_frontend_implementation() noexcept;
 
-        void scale_sensor_lens_distance(bool up, float factor);
-        void scale_focal_length(bool up, float factor);
-        void scale_diaphragm_radius(bool up, float factor);
+        // Lens parametrization
+        void set_camera_lens_setting(lens_setting, float value);
+        float get_camera_lens_setting(lens_setting) const noexcept;
+
+        // Camera movements
         void camera_move(float dx, float dy, float dz);
         void camera_move_forward(float distance);
         void camera_move_lateral(float distance);
         void camera_rotate(float theta, float phi);
 
-        void integrate_for(const std::chrono::milliseconds &max_duration);
-        void develop_image();
+        void set_integration_duration(const std::chrono::milliseconds &integration_duration);
+        void update();
         std::vector<rgb24> get_image();
+
+        // todo: use worker_type ?
         std::size_t get_renderer_count() const;
         void set_current_renderer(std::size_t renderer_id);
         std::size_t get_current_renderer() const;
@@ -56,6 +61,8 @@ namespace Xrender
         void set_current_developer(std::size_t developer_id);
         std::size_t get_current_developer() const;
         const worker_descriptor &get_developer_descriptor(std::size_t developer_id) const;
+
+        const rendering_status& get_rendering_status() const noexcept;
 
         unsigned int get_image_width() const noexcept { return _camera.get_image_width(); }
         unsigned int get_image_height() const noexcept { return _camera.get_image_height(); }
@@ -68,6 +75,7 @@ namespace Xrender
             worker_descriptor&& descriptor,
             std::unique_ptr<abstract_image_developer> &&developer);
         void _reset_current_renderer();
+        void _develop_image(const float3 *device_sensor, size_t total_integrated_sample);
 
         // Sent at each kernel call
         camera _camera;
@@ -90,6 +98,7 @@ namespace Xrender
 
         // OpenGL texture registered for display
         std::unique_ptr<registered_texture> _registered_texture;
+        std::chrono::milliseconds _integration_duration{std::chrono::milliseconds{50}};
     };
 
     /**
@@ -121,9 +130,7 @@ namespace Xrender
                 {
                     "Average Developer",
                     {
-                        {
-                            "Factor", [average_dev](bool up) { average_dev->scale_factor(up); }
-                        }
+                        { "Factor", average_dev->factor() }
                     }
                 },
                 std::move(average_developer));
@@ -136,12 +143,8 @@ namespace Xrender
                 {
                     "Gamma developer",
                     {
-                        {
-                            "Factor", [gamma_dev](bool up) { gamma_dev->scale_factor(up); }
-                        },
-                        {
-                            "Gamma",  [gamma_dev](bool up) { gamma_dev->scale_gamma(up); }
-                        }
+                        { "Factor", gamma_dev->factor() },
+                        { "Gamma",  gamma_dev->gamma() }
                     }
                 },
                 std::move(gamma_developer));
@@ -185,28 +188,51 @@ namespace Xrender
             return;
         _renderers[_current_renderer].reset();
     }
-    void renderer_frontend_implementation::scale_sensor_lens_distance(bool up, float factor)
+
+    void renderer_frontend_implementation::_develop_image(const float3 *device_sensor, size_t total_integrated_sample)
     {
-        if (up)
-            _camera._sensor_lens_distance *= factor;
-        else
-            _camera._sensor_lens_distance /= factor;
+        if (_registered_texture == nullptr ||
+            _current_developer >= get_developer_count())
+            return;
+
+        auto mapped_surface = _registered_texture->get_mapped_surface();
+        _developpers[_current_developer]->call_develop_to_texture_kernel(
+            total_integrated_sample,
+            _camera.get_image_width(),
+            _camera.get_image_height(),
+            device_sensor,
+            mapped_surface.surface());
+
+        CUDA_CHECK(cudaGetLastError());
+        CUDA_CHECK(cudaDeviceSynchronize());
+    }
+
+    void renderer_frontend_implementation::set_camera_lens_setting(lens_setting type, float value)
+    {
+        switch (type)
+        {
+        case lens_setting::SENSOR_LENS_DISTANCE:
+            _camera._sensor_lens_distance = value;
+            break;
+        case lens_setting::FOCAL_LENGTH:
+            camera_update_focal_length(_camera, value);
+            break;
+        case lens_setting::DIAPHRAGM_RADIUS:
+            _camera._diaphragm_radius = value;
+            break;
+        }
         _reset_current_renderer();
     }
 
-    void renderer_frontend_implementation::scale_focal_length(bool up, float factor)
+    float renderer_frontend_implementation::get_camera_lens_setting(lens_setting type) const noexcept
     {
-        camera_update_focal_length(_camera, up, factor);
-        _reset_current_renderer();
-    }
-
-    void renderer_frontend_implementation::scale_diaphragm_radius(bool up, float factor)
-    {
-        if (up)
-            _camera._diaphragm_radius *= factor;
-        else
-            _camera._diaphragm_radius /= factor;
-        _reset_current_renderer();
+        switch (type)
+        {
+        case lens_setting::SENSOR_LENS_DISTANCE: return _camera._sensor_lens_distance;
+        case lens_setting::FOCAL_LENGTH: return _camera._focal_length;
+        default:
+        case lens_setting::DIAPHRAGM_RADIUS: return _camera._diaphragm_radius;
+        }
     }
 
     void renderer_frontend_implementation::camera_move(float dx, float dy, float dz)
@@ -233,32 +259,28 @@ namespace Xrender
         _reset_current_renderer();
     }
 
-    void renderer_frontend_implementation::integrate_for(const std::chrono::milliseconds &max_duration)
+    void renderer_frontend_implementation::set_integration_duration(const std::chrono::milliseconds &integration_duration)
     {
-        if (_current_renderer >= get_renderer_count())
-            return;
-        _renderers[_current_renderer].integrate_for(max_duration);
+        _integration_duration = integration_duration;
     }
 
-    void renderer_frontend_implementation::develop_image()
+    void renderer_frontend_implementation::update()
     {
-        if (_registered_texture == nullptr ||
-            _current_developer >= get_developer_count() ||
-            _current_renderer >= get_renderer_count())
+        if (_current_renderer >= get_renderer_count() ||
+            _current_developer >= get_developer_count())
             return;
 
-        auto mapped_surface = _registered_texture->get_mapped_surface();
-        auto &renderer = _renderers[_current_renderer];
+        auto& renderer = _renderers[_current_renderer];
+        auto& developer = _developpers[_current_developer];
+        if (renderer.is_ready())
+        {
+            // develop synchronously into texture while the computation are running
+            _develop_image(renderer.get_device_sensor(), renderer.get_status().total_integrated_sample);
 
-        _developpers[_current_developer]->call_develop_to_texture_kernel(
-            renderer.get_total_sample_count(),
-            _camera.get_image_width(),
-            _camera.get_image_height(),
-            renderer.get_device_sensor(),
-            mapped_surface.surface());
-
-        CUDA_CHECK(cudaGetLastError());
-        CUDA_CHECK(cudaDeviceSynchronize());
+            // restart computations
+            renderer.start_integrate_for(_integration_duration);
+        }
+        // else: computation in progress...
     }
 
     std::vector<rgb24> renderer_frontend_implementation::get_image()
@@ -338,6 +360,14 @@ namespace Xrender
             throw std::invalid_argument("invalid renderer id");
     }
 
+    const rendering_status& renderer_frontend_implementation::get_rendering_status() const noexcept
+    {
+        if (_current_renderer >= get_renderer_count())
+            throw std::runtime_error("No renderer to get status");
+        else
+            return _renderers[_current_renderer].get_status();
+    }
+
     /**
      * Private implementation wrapping
      */
@@ -395,19 +425,14 @@ namespace Xrender
             delete _implementation;
     }
 
-    void renderer_frontend::scale_sensor_lens_distance(bool up, float factor)
+    void renderer_frontend::set_camera_lens_setting(lens_setting type, float value)
     {
-        _implementation->scale_sensor_lens_distance(up, factor);
+        _implementation->set_camera_lens_setting(type, value);
     }
 
-    void renderer_frontend::scale_focal_length(bool up, float factor)
+    float renderer_frontend::get_camera_lens_setting(lens_setting type) const noexcept
     {
-        _implementation->scale_focal_length(up, factor);
-    }
-
-    void renderer_frontend::scale_diaphragm_radius(bool up, float factor)
-    {
-        _implementation->scale_diaphragm_radius(up, factor);
+        return _implementation->get_camera_lens_setting(type);
     }
 
     void renderer_frontend::camera_move(float dx, float dy, float dz)
@@ -430,14 +455,14 @@ namespace Xrender
         _implementation->camera_rotate(theta, phi);
     }
 
-    void renderer_frontend::integrate_for(const std::chrono::milliseconds &max_duration)
+    void renderer_frontend::set_integration_duration(const std::chrono::milliseconds &integration_duration)
     {
-        _implementation->integrate_for(max_duration);
+        _implementation->set_integration_duration(integration_duration);
     }
 
-    void renderer_frontend::develop_image()
+    void renderer_frontend::update()
     {
-        _implementation->develop_image();
+        _implementation->update();
     }
 
     std::vector<rgb24> renderer_frontend::get_image()
@@ -455,45 +480,48 @@ namespace Xrender
         return _implementation->get_image_height();
     }
 
-
-    std::size_t renderer_frontend::get_renderer_count() const
+    std::size_t renderer_frontend::get_worker_count(worker_type type) const
     {
-        return _implementation->get_renderer_count();
+        if (type == worker_type::Developer)
+            return _implementation->get_developer_count();
+        else
+            return _implementation->get_renderer_count();
     }
 
-    void renderer_frontend::set_current_renderer(std::size_t renderer_id)
+    void renderer_frontend::set_current_worker(worker_type type, std::size_t worker_id)
     {
-        _implementation->set_current_renderer(renderer_id);
+        if (worker_id == get_current_worker(type))
+            return;
+        else if (type == worker_type::Developer)
+            _implementation->set_current_developer(worker_id);
+        else
+            _implementation->set_current_renderer(worker_id);
     }
 
-    std::size_t renderer_frontend::get_current_renderer() const
+    std::size_t renderer_frontend::get_current_worker(worker_type type) const
     {
-        return _implementation->get_current_renderer();
+        if (type == worker_type::Developer)
+            return _implementation->get_current_developer();
+        else
+            return _implementation->get_current_renderer();
     }
 
-    const renderer_frontend::worker_descriptor &renderer_frontend::get_renderer_descriptor(std::size_t renderer_id) const
+    const renderer_frontend::worker_descriptor& renderer_frontend::get_current_worker_descriptor(worker_type type) const
     {
-        return _implementation->get_renderer_descriptor(renderer_id);
+        const auto id = get_current_worker(type);
+        return get_worker_descriptor(type, id);
     }
 
-    std::size_t renderer_frontend::get_developer_count() const
+    const renderer_frontend::worker_descriptor& renderer_frontend::get_worker_descriptor(worker_type type, std::size_t worker_id) const
     {
-        return _implementation->get_developer_count();
+        if (type == worker_type::Developer)
+            return _implementation->get_developer_descriptor(worker_id);
+        else
+            return _implementation->get_renderer_descriptor(worker_id);
     }
 
-    void renderer_frontend::set_current_developer(std::size_t developer_id)
+    const rendering_status& renderer_frontend::get_rendering_status() const noexcept
     {
-        _implementation->set_current_developer(developer_id);
+        return _implementation->get_rendering_status();
     }
-
-    std::size_t renderer_frontend::get_current_developer() const
-    {
-        return _implementation->get_current_developer();
-    }
-
-    const renderer_frontend::worker_descriptor &renderer_frontend::get_developer_descriptor(std::size_t developer_id) const
-    {
-        return _implementation->get_developer_descriptor(developer_id);
-    }
-
 }

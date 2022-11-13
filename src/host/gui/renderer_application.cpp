@@ -1,4 +1,3 @@
-
 #include <stdexcept>
 #include <iostream>
 #include <cmath>
@@ -6,6 +5,10 @@
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_opengl.h>
+
+#include <imgui.h>
+#include <imgui_impl_sdl.h>
+#include <imgui_impl_opengl2.h>
 
 #include "host/bitmap/bitmap.h"
 #include "renderer_application.h"
@@ -24,15 +27,14 @@ namespace Xrender
         const auto width = config.camera_config.image_width;
         const auto height = config.camera_config.image_height;
 
-        _window = SDL_CreateWindow(
-            "Xrender", 0, 0,
-            width, height,
-            SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+        const auto windows_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI;
+        _window = SDL_CreateWindow("Xrender", 0, 0, width, height, windows_flags);
 
         // Hide the windows until the render is not ready to start
         SDL_HideWindow(_window);
 
         _gl_context = SDL_GL_CreateContext(_window);
+        SDL_GL_MakeCurrent(_window, _gl_context);
 
         GLenum glew_error = glewInit();
         if (glew_error != GLEW_OK)
@@ -40,11 +42,14 @@ namespace Xrender
             throw std::runtime_error(reinterpret_cast<const char*>(glewGetErrorString(glew_error)));
         }
 
-        //
+        // Setup windows
         SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
         SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
+        SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 
-        // Create openGL texture to develop into
+        // Create openGL texture to develop the rendered image into
         glGenTextures(1, &_texture);
         glBindTexture(GL_TEXTURE_2D, _texture);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
@@ -52,7 +57,16 @@ namespace Xrender
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glEnable(GL_TEXTURE_2D);
 
+        // Setup Dear ImGui context
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+        ImGui::StyleColorsDark();
+        ImGui_ImplSDL2_InitForOpenGL(_window, _gl_context);
+        ImGui_ImplOpenGL2_Init();
+
+        // Initialize the renderer and the gui
         _renderer = renderer_frontend::build_renderer_frontend(config, _texture);
+        _gui = std::make_unique<renderer_gui>(*_renderer);
 
         SDL_ShowWindow(_window);
         _update_size();
@@ -61,6 +75,9 @@ namespace Xrender
     renderer_application::~renderer_application() noexcept
     {
         // Renderer must be reset to unmap the texture
+        ImGui_ImplOpenGL2_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
         _renderer.reset();
         glDeleteTextures(1, &_texture);
         SDL_GL_DeleteContext(_gl_context);
@@ -72,108 +89,34 @@ namespace Xrender
         std::cout << "Start rendering" << std::endl;
         while (!_handle_events())
         {
-            const auto render_duration =
-                std::chrono::milliseconds(_fast_mode ? 10000 : 125 /* 8 fps */);
-
-            _renderer->integrate_for(render_duration);
-            _renderer->develop_image();
+            _renderer->update();
             _draw();
         }
     }
 
-    void renderer_application::_next_renderer()
+    void renderer_application::_next_camera_setting()
     {
-        const auto renderer_count = _renderer->get_renderer_count();
-        const auto current_renderer = _renderer->get_current_renderer();
-        const auto next_renderer = (current_renderer + 1) % renderer_count;
-        const auto& next_renderer_desc = _renderer->get_renderer_descriptor(next_renderer);
-
-        _renderer->set_current_renderer(next_renderer);
-
-        std::cout << "\nSwitch to renderer " << next_renderer_desc.name() << std::endl;
-    }
-
-    void renderer_application::_next_developer()
-    {
-        const auto developer_count = _renderer->get_developer_count();
-        const auto current_developer = _renderer->get_current_developer();
-        const auto next_developer = (current_developer + 1) % developer_count;
-        const auto& next_developer_desc = _renderer->get_developer_descriptor(next_developer);
-
-        _renderer->set_current_developer(next_developer);
-
-        std::cout << "\nSwitch to developer " << next_developer_desc.name() << std::endl;
-    }
-
-    void renderer_application::_next_control_mode()
-    {
-        std::cout << "\nSwitch to control mode : ";
-
-        switch (_control_mode)
+        std::cout << "\nSwitch to camera setting ";
+        switch (_camera_mouse_wheel_setting)
         {
-        case control_mode::CAMERA_SETTINGS:
-            std::cout << "Developer" << std::endl;
-            _control_mode = control_mode::DEVELOPER_SETTINGS;
+        case renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE:
+            std::cout << "focal length" << std::endl;
+            _camera_mouse_wheel_setting = renderer_frontend::lens_setting::FOCAL_LENGTH;
             break;
-        case control_mode::DEVELOPER_SETTINGS:
-            std::cout << "Renderer" << std::endl;
-            _control_mode = control_mode::RENDERER_SETTINGS;
+
+        case renderer_frontend::lens_setting::FOCAL_LENGTH:
+            std::cout << "diaphragm radius" << std::endl;
+            _camera_mouse_wheel_setting = renderer_frontend::lens_setting::DIAPHRAGM_RADIUS;
             break;
-        case control_mode::RENDERER_SETTINGS:
-            std::cout << "Camera" << std::endl;
-            _control_mode = control_mode::CAMERA_SETTINGS;
+
+        case renderer_frontend::lens_setting::DIAPHRAGM_RADIUS:
+            std::cout << "sensor-lens distance" << std::endl;
+            _camera_mouse_wheel_setting = renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE;
             break;
+
         default:
             break;
         }
-    }
-
-    void renderer_application::_next_setting()
-    {
-        if (_control_mode == control_mode::CAMERA_SETTINGS)
-        {
-            std::cout << "\nSwitch to camera setting ";
-            switch (_camera_setting)
-            {
-            case camera_setting::SENSOR_LENS_DISTANCE:
-                std::cout << "focal length" << std::endl;
-                _camera_setting = camera_setting::FOCAL_LENGTH;
-                break;
-
-            case camera_setting::FOCAL_LENGTH:
-                std::cout << "diaphragm radius" << std::endl;
-                _camera_setting = camera_setting::DIAPHRAGM_RADIUS;
-                break;
-
-            case camera_setting::DIAPHRAGM_RADIUS:
-                std::cout << "sensor-lens distance" << std::endl;
-                _camera_setting = camera_setting::SENSOR_LENS_DISTANCE;
-                break;
-
-            default:
-                break;
-            }
-        }
-        else
-        {
-            const auto& worker = _get_current_control_worker();
-            const auto& worker_settings = worker.settings();
-            const auto setting_count = worker_settings.size();
-
-            if (setting_count > 0) {
-                _control_setting_id = (_control_setting_id + 1) % setting_count;
-                std::cout << "\nSwitched to control setting : " << worker.name()
-                        <<  " - " << worker_settings[_control_setting_id].name() << std::endl;
-            }
-        }
-    }
-
-    const renderer_frontend::worker_descriptor& renderer_application::_get_current_control_worker()
-    {
-        return
-            _control_mode == control_mode::DEVELOPER_SETTINGS ?
-                _renderer->get_developer_descriptor(_renderer->get_current_developer()) :
-                _renderer->get_renderer_descriptor(_renderer->get_current_renderer());
     }
 
     void renderer_application::_handle_key_down(SDL_Keysym key)
@@ -183,23 +126,7 @@ namespace Xrender
         switch (key.sym)
         {
             case SDLK_TAB:
-                _next_setting();
-                break;
-
-            case SDLK_c:
-                _next_control_mode();
-                break;
-
-            case SDLK_BACKSPACE:
-                _switch_fast_mode();
-                break;
-
-            case SDLK_RETURN:
-                _next_renderer();
-                break;
-
-            case SDLK_RSHIFT:
-                _next_developer();
+                _next_camera_setting();
                 break;
 
             case SDLK_ESCAPE:
@@ -231,71 +158,75 @@ namespace Xrender
                 break;
 
             case SDLK_r:
-                _switch_rotation();
+                _switch_mouse_mode();
                 break;
         }
     }
 
-    void renderer_application::_handle_mouse_wheel(bool up)
+    void renderer_application::_handle_camera_mouse_wheel(bool up)
     {
-        if (_control_mode == control_mode::CAMERA_SETTINGS)
+        float factor;
+        switch (_camera_mouse_wheel_setting)
         {
-            switch (_camera_setting)
-            {
-            case camera_setting::SENSOR_LENS_DISTANCE:
-                _renderer->scale_sensor_lens_distance(up, 1.0001f);
-                break;
-
-            case camera_setting::FOCAL_LENGTH:
-                _renderer->scale_focal_length(up, 1.01f);
-                break;
-
-            case camera_setting::DIAPHRAGM_RADIUS:
-                _renderer->scale_diaphragm_radius(up, 1.1f);
-                break;
-
             default:
+            case renderer_frontend::lens_setting::SENSOR_LENS_DISTANCE:
+                factor = 1.0001f;
                 break;
-            }
-        }
-        else
-        {
-            const auto& worker = _get_current_control_worker();
-            const auto& worker_settings = worker.settings();
-            const auto setting_count = worker_settings.size();
 
-            if (_control_setting_id < setting_count)
-            {
-                worker_settings[_control_setting_id].scale(up);
-            }
+            case renderer_frontend::lens_setting::FOCAL_LENGTH:
+                factor = 1.01f;
+                break;
+
+            case renderer_frontend::lens_setting::DIAPHRAGM_RADIUS:
+                factor = 1.1f;
+                break;
         }
+
+        const float current_value = _renderer->get_camera_lens_setting(_camera_mouse_wheel_setting);
+        const float new_value = current_value * (up ? factor : (1.f/factor));
+        _renderer->set_camera_lens_setting(_camera_mouse_wheel_setting, new_value);
     }
 
-    void renderer_application::_handle_mouse_motion(int xrel, int yrel)
+    void renderer_application::_handle_camera_mouse_motion(int xrel, int yrel)
     {
-        if (!_freeze_camera_rotation)
-        {
-            constexpr auto factor = 0.001f;
-            _camera_phi -= factor * xrel;
-            _camera_theta -= factor * yrel;
-            _renderer->camera_rotate(_camera_theta, _camera_phi);
-        }
+        constexpr auto factor = 0.001f;
+        _camera_phi -= factor * xrel;
+        _camera_theta -= factor * yrel;
+        _renderer->camera_rotate(_camera_theta, _camera_phi);
     }
 
     bool renderer_application::_handle_events()
     {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
+
             switch (event.type)
             {
-                case SDL_KEYDOWN:       _handle_key_down(event.key.keysym); break;
-                case SDL_MOUSEWHEEL:    _handle_mouse_wheel(event.wheel.y > 0); break;
-                case SDL_MOUSEMOTION:   _handle_mouse_motion(event.motion.xrel, event.motion.yrel); break;
-                case SDL_QUIT:          return true; break;
-
+                case SDL_KEYDOWN:
+                    if (_mouse_mode == mouse_mode::CAMERA || !ImGui::GetIO().WantCaptureKeyboard)
+                        _handle_key_down(event.key.keysym);
+                    break;
+                case SDL_MOUSEWHEEL:
+                    if (_mouse_mode == mouse_mode::CAMERA)
+                        _handle_camera_mouse_wheel(event.wheel.y > 0);
+                    break;
+                case SDL_MOUSEMOTION:
+                    if (_mouse_mode == mouse_mode::CAMERA)
+                        _handle_camera_mouse_motion(event.motion.xrel, event.motion.yrel);
+                    break;
+                case SDL_QUIT:
+                    return true;
+                    break;
                 case SDL_WINDOWEVENT:
                     if (event.window.event == SDL_WINDOWEVENT_RESIZED)
                         _update_size();
+                    break;
+            }
+
+            if (_mouse_mode == mouse_mode::GUI)
+            {
+                // std::cout << "IMGUI EVENT\n" << std::endl;
+                ImGui_ImplSDL2_ProcessEvent(&event);
             }
         }
 
@@ -304,26 +235,27 @@ namespace Xrender
 
     void renderer_application::_draw()
     {
+        // Prepare gui frame
+        ImGui_ImplOpenGL2_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
+        _gui->draw();
+        ImGui::Render(); // Prepare data for rendering
+
         glClearColor(1.f, 0.f, 1.f, 0.f);
         glClear(GL_COLOR_BUFFER_BIT);
 
+        // Draw the sensor texture
         glBindTexture(GL_TEXTURE_2D, _texture);
-
         glBegin(GL_QUADS);
-
-        glVertex2i(0, 0);
-        glTexCoord2i(1, 0);
-
-        glVertex2i(1, 0);
-        glTexCoord2i(1, 1);
-
-        glVertex2i(1, 1);
-        glTexCoord2i(0, 1);
-
-        glVertex2i(0, 1);
-        glTexCoord2i(0, 0);
-
+        glVertex2i(0, 0); glTexCoord2i(1, 0);
+        glVertex2i(1, 0); glTexCoord2i(1, 1);
+        glVertex2i(1, 1); glTexCoord2i(0, 1);
+        glVertex2i(0, 1); glTexCoord2i(0, 0);
         glEnd();
+
+        // Draw the gui
+        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 
         SDL_GL_SwapWindow(_window);
     }
@@ -339,20 +271,11 @@ namespace Xrender
         glOrtho(0.f, 1.f, 0.f, 1.f, -1.f, 1.f);
     }
 
-    void renderer_application::_switch_fast_mode()
+    void renderer_application::_switch_mouse_mode()
     {
-        _fast_mode = !_fast_mode;
-        if (_fast_mode && !_freeze_camera_rotation)
-            _switch_rotation();
-        std::cout << "\n" <<  (_fast_mode ? "enable" : "disable") <<  " fast mode." << std::endl;
-    }
-
-    void renderer_application::_switch_rotation()
-    {
-        _freeze_camera_rotation = !_freeze_camera_rotation;
-        std::cout << "\nEnable camera rotation : " << (_freeze_camera_rotation ? "Off" : "On") << std::endl;
-        SDL_SetWindowGrab(_window, static_cast<SDL_bool>(!_freeze_camera_rotation));
-        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(!_freeze_camera_rotation));
+        _mouse_mode = (_mouse_mode == mouse_mode::CAMERA) ? mouse_mode::GUI : mouse_mode::CAMERA;
+        SDL_SetWindowGrab(_window, static_cast<SDL_bool>(_mouse_mode == mouse_mode::CAMERA));
+        SDL_SetRelativeMouseMode(static_cast<SDL_bool>(_mouse_mode == mouse_mode::CAMERA));
     }
 
     void renderer_application::_save_current_image()

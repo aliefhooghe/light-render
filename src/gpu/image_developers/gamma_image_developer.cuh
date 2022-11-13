@@ -14,8 +14,11 @@ namespace Xrender
             std::size_t thread_per_block = 256);
         ~gamma_image_developer() noexcept override = default;
 
-        void scale_gamma(bool up);
-        void scale_factor(bool up);
+        const float& gamma() const noexcept { return _gamma; }
+        float& gamma() noexcept { return _gamma; }
+
+        const float& factor() const noexcept { return _factor; };
+        float& factor() noexcept { return _factor; };
 
         void call_develop_to_texture_kernel(
             std::size_t total_sample_count,
