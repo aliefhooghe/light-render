@@ -66,7 +66,7 @@ namespace Xrender {
         const auto basis_y = cross(normal, basis_x);
         const float phi = 2.f * curand_uniform(state) * CUDART_PI_F;
 
-        const float cos_theta = powf(curand_uniform(state), 1.f/(exponent + 1.f));
+        const float cos_theta = __powf(curand_uniform(state), 1.f/(exponent + 1.f));
         const float sin_theta = sqrtf(1.f - cos_theta * cos_theta);
 
         const float cos_phi = cosf(phi);

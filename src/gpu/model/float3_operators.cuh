@@ -98,17 +98,17 @@ namespace Xrender {
 
     static __device__ __host__ __forceinline__ float norm(const float3& a)
     {
-        return sqrtf(norm2(a));
+        return __sqrtf(norm2(a));
     }
 
     static __device__ __host__ __forceinline__ float3 normalized(const float3& a)
     {
-        return (1.f / norm(a)) * a;
+        return rsqrtf(norm2(a)) * a;
     }
 
     static __device__ __host__ __forceinline__ void normalize(float3& a)
     {
-        a *= (1.f / norm(a));
+        a *= rsqrtf(norm2(a));
     }
 
     static __device__ __host__ __forceinline__ float3 cross(const float3 &x, const float3 &y)
