@@ -10,4 +10,4 @@ A simple progressive path tracer built with CUDA using a BVH as an acceleration 
 
 ![image](assets/sample1.bmp)
 ![image](assets/sample2.bmp)
-![image](assets/sample3.bmp)
+![image](assets/sample4.bmp)
